@@ -22,7 +22,6 @@ cd role-based-approval-workflow
 ### Option A — Pipenv (recommended)
 Install `pipenv` if not installed
 ```bash
-cd role-based-approval-workflow
 pip install pipenv
 ```
 
