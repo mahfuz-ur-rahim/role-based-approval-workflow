@@ -14,10 +14,15 @@ from workflow.views import DocumentRejectView
 app_name = 'workflow'
 
 urlpatterns = [
-    path('', home, name='home'),
-    path('documents/', DocumentListView.as_view(), name='document-list'),
-    path('documents/create/', DocumentCreateView.as_view(), name='document-create'),
-    path("documents/<int:pk>/edit/", DocumentUpdateView.as_view(), name="document_edit"),
+    path('', 
+        home, 
+        name='home'),
+    path('documents/', 
+        DocumentListView.as_view(), 
+        name='document-list'),
+    path('documents/create/', 
+        DocumentCreateView.as_view(), 
+        name='document-create'),
     path(
         "documents/<int:pk>/edit/",
         DocumentUpdateView.as_view(),

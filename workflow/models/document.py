@@ -71,9 +71,5 @@ class Document(models.Model):
 
         self.status = self.Status.REJECTED
         self.save(update_fields=["status", "updated_at"])
-    
-    def set_status(self, new_status, by_user=None):
-        self.status = new_status
-        self.save(update_fields=["status"])
 
 
