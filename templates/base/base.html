@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Document Approval System</title>
+</head>
+<body>
+
+<nav>
+  {% if user.is_authenticated %}
+    <a href="{% url 'workflow:document-list' %}">Documents</a>
+    <a href="{% url 'workflow:document-create' %}">Create Document</a>
+
+    <form method="post" action="{% url 'logout' %}" style="display:inline;">
+      {% csrf_token %}
+      <button type="submit">Logout</button>
+    </form>
+  {% else %}
+    <a href="{% url 'login' %}">Login</a>
+  {% endif %}
+</nav>
+
+<hr>
+
+{% block content %}{% endblock %}
+
+</body>
+</html>

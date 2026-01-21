@@ -1,0 +1,35 @@
+{% extends "base/base.html" %}
+
+{% block content %}
+<h2>Pending Documents</h2>
+
+<table border="1">
+  <tr>
+    <th>Title</th>
+    <th>Owner</th>
+    <th>Actions</th>
+  </tr>
+
+  {% for doc in documents %}
+    <tr>
+      <td>{{ doc.title }}</td>
+      <td>{{ doc.created_by.username }}</td>
+      <td>
+        <form method="post" action="{% url 'workflow:document-approve' doc.id %}">
+          {% csrf_token %}
+          <button type="submit">Approve</button>
+        </form>
+
+        <form method="post" action="{% url 'workflow:document-reject' doc.id %}">
+          {% csrf_token %}
+          <button type="submit">Reject</button>
+        </form>
+      </td>
+    </tr>
+  {% empty %}
+    <tr>
+      <td colspan="3">No pending documents.</td>
+    </tr>
+  {% endfor %}
+</table>
+{% endblock %}
