@@ -11,9 +11,8 @@ class ApprovalStep(models.Model):
     Immutable record of an approval decision
     made on a document.
     """
-
     document = models.ForeignKey(
-        Document,
+        "workflow.Document",
         on_delete=models.CASCADE,
         related_name="approval_steps"
     )

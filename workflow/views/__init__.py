@@ -1,4 +1,4 @@
-from .document_edit import DocumentUpdateView
+from .document_update import DocumentUpdateView
 from .document_review_list import ManagerDocumentListView
 from .document_decision import DocumentApproveView, DocumentRejectView
 from .login_redirect import RoleBasedLoginView

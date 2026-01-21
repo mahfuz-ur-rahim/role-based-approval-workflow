@@ -22,7 +22,7 @@ class AuditLog(models.Model):
     )
 
     document = models.ForeignKey(
-        Document,
+        "workflow.Document",
         on_delete=models.CASCADE,
         null=True,
         blank=True,

@@ -25,8 +25,10 @@ class EmployeeRequiredMixin(GroupRequiredMixin):
     required_groups = ['Employee', 'Manager', 'Admin']
 
 
-class ManagerRequiredMixin(GroupRequiredMixin):
+class ManagerRequiredMixin(UserPassesTestMixin):
     required_groups = ['Manager', 'Admin']
+    def test_func(self):
+        return self.request.user.groups.filter(name="Manager").exists()
 
 
 class AdminRequiredMixin(GroupRequiredMixin):
