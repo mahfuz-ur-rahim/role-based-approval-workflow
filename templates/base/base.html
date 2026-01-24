@@ -1,27 +1,34 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
+  <head>
     <title>Document Approval System</title>
-</head>
-<body>
+  </head>
+  <body>
+    <nav>
+      {% if user.is_authenticated %} {% if user.is_superuser %}
+      <a href="{% url 'reports:audit-log-list' %}">Audit Logs</a>
+      {% endif %}
 
-<nav>
-  {% if user.is_authenticated %}
-    <a href="{% url 'workflow:document-list' %}">Documents</a>
-    <a href="{% url 'workflow:document-create' %}">Create Document</a>
+      <a href="{% url 'workflow:document-list' %}">Documents</a>
+      {% if is_manager or is_admin %}
+      <a href="{% url 'workflow:manager-document-list' %}">
+        Pending Approvals
+      </a>
+      {% endif %}
 
-    <form method="post" action="{% url 'logout' %}" style="display:inline;">
-      {% csrf_token %}
-      <button type="submit">Logout</button>
-    </form>
-  {% else %}
-    <a href="{% url 'login' %}">Login</a>
-  {% endif %}
-</nav>
+      <a href="{% url 'workflow:document-create' %}">Create Document</a>
 
-<hr>
+      <form method="post" action="{% url 'logout' %}" style="display: inline">
+        {% csrf_token %}
+        <button type="submit">Logout</button>
+      </form>
+      {% else %}
+      <a href="{% url 'login' %}">Login</a>
+      {% endif %}
+    </nav>
 
-{% block content %}{% endblock %}
+    <hr />
 
-</body>
+    {% block content %}{% endblock %}
+  </body>
 </html>

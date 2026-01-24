@@ -20,9 +20,10 @@ from django.contrib.auth.views import LogoutView
 from workflow.views import RoleBasedLoginView
 
 urlpatterns = [
-    path('summernote/', include('django_summernote.urls')),
-    path('', include(('workflow.urls', 'workflow'), namespace='workflow')),
+    path("summernote/", include('django_summernote.urls')),
+    path("", include(('workflow.urls', 'workflow'), namespace='workflow')),
     path("accounts/login/", RoleBasedLoginView.as_view(), name="login"),
     path("accounts/logout/", LogoutView.as_view(), name="logout"),
-    path('admin/', admin.site.urls),
+    path("admin/", admin.site.urls),
+    path("reports/", include(("reports.urls", "reports"), namespace="reports")),
 ]

@@ -17,3 +17,10 @@ class DocumentListView(LoginRequiredMixin, ListView):
             return Document.objects.all().order_by('-created_at')
 
         return Document.objects.filter(created_by=user).order_by('-created_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["is_admin"] = (
+            self.request.user.groups.filter(name="Admin").exists()
+        )
+        return context

@@ -1,4 +1,5 @@
 from django.contrib.auth.mixins import UserPassesTestMixin
+from django.core.exceptions import PermissionDenied
 
 
 class GroupRequiredMixin(UserPassesTestMixin):
@@ -6,6 +7,7 @@ class GroupRequiredMixin(UserPassesTestMixin):
     Base mixin for group-based access control.
     Subclasses must define `required_groups`.
     """
+
     required_groups: list[str] = []
 
     def test_func(self):
@@ -22,14 +24,21 @@ class GroupRequiredMixin(UserPassesTestMixin):
 
 
 class EmployeeRequiredMixin(GroupRequiredMixin):
-    required_groups = ['Employee', 'Manager', 'Admin']
+    required_groups = ["Employee", "Manager", "Admin"]
 
 
-class ManagerRequiredMixin(UserPassesTestMixin):
-    required_groups = ['Manager', 'Admin']
-    def test_func(self):
-        return self.request.user.groups.filter(name="Manager").exists()
+class ManagerRequiredMixin(GroupRequiredMixin):
+    required_groups = ["Manager", "Admin"]
 
 
 class AdminRequiredMixin(GroupRequiredMixin):
-    required_groups = ['Admin']
+    required_groups = ["Admin"]
+
+
+class ApproverRequiredMixin(GroupRequiredMixin):
+    """
+    Allows Manager or Admin users to approve/reject documents.
+    Self-approval must be enforced at the view level.
+    """
+
+    required_groups = ["Manager", "Admin"]

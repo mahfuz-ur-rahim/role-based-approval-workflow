@@ -34,6 +34,13 @@
         {% else %}
           —
         {% endif %}
+
+        {% if is_admin %}
+          <br>
+          <a href="{% url 'workflow:document-audit-log' doc.id %}">
+            View Audit
+          </a>
+        {% endif %}
       </td>
     </tr>
   {% empty %}

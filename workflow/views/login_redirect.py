@@ -1,12 +1,12 @@
 from django.contrib.auth.views import LoginView
-from django.shortcuts import redirect
+from django.urls import reverse
 
 
 class RoleBasedLoginView(LoginView):
     def get_success_url(self):
         user = self.request.user
 
-        if user.groups.filter(name="Manager").exists():
-            return "/manager/documents/"
+        if user.groups.filter(name__in=["Manager", "Admin"]).exists():
+            return reverse("workflow:manager-document-list")
 
-        return "/documents/"
+        return reverse("workflow:document-list")

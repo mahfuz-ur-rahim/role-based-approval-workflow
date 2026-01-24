@@ -1,204 +1,250 @@
-# Architecture — Role-Based Approval Workflow System
+# Architecture Overview
 
-## 1. Overview
+## Role-Based Document Approval Workflow System
 
-This project implements a **role-based document approval workflow** using Django.
-It is designed as a **learning-oriented, modular backend system** with clear separation of concerns, explicit domain rules, and auditable state transitions.
+## 1. Architectural Goals
 
-The system supports:
+This system is designed to demonstrate a **secure, auditable, role-based approval workflow** with explicit enforcement of separation of duties. The architecture prioritizes:
 
-* Drafting and submitting documents
-* Manager review and approval/rejection
-* Immutable audit and approval history
-* Role-based access using Django Groups
-
----
-
-## 2. Architectural Principles
-
-### 2.1 Explicit Domain Ownership
-
-* The `Document` model owns its lifecycle.
-* Status transitions are enforced at the model level.
-* Views orchestrate use-cases but do not encode business rules.
-
-### 2.2 Immutable History
-
-* Approval decisions (`ApprovalStep`) are append-only.
-* Audit logs (`AuditLog`) are append-only.
-* No destructive updates of historical records.
-
-### 2.3 Role-Based Control (RBAC)
-
-* Roles are implemented via Django Groups:
-
-  * Employee
-  * Manager
-  * Admin
-* Access is enforced in views, not via Django permission flags.
-
-### 2.4 Thin Views, Fat Models
-
-* Views validate access and orchestrate flows.
-* Models enforce invariants and transitions.
+* Clear responsibility boundaries between roles
+* Explicit workflow state transitions
+* Auditability of all sensitive actions
+* Defense-in-depth (UI, view, and data-layer checks)
+* Educational clarity over framework “magic”
 
 ---
 
-## 3. Application Structure
+## 2. Core Domain Model
+
+### Document Lifecycle
+
+Documents move through a **strict, linear lifecycle**:
 
 ```
-workflow/
-├── models/
-│   ├── document.py      # Core business entity
-│   ├── approval.py      # Approval history
-│   ├── audit.py         # Audit trail
-│   └── __init__.py
-│
-├── views/
-│   ├── document_list.py
-│   ├── document_create.py
-│   ├── document_update.py
-│   ├── document_submit.py
-│   ├── document_review_list.py
-│   ├── document_decision.py
-│   ├── login_redirect.py
-│   └── home.py
-│
-├── forms.py
-├── mixins.py
-├── signals.py
-├── urls.py
-└── apps.py
+DRAFT → SUBMITTED → APPROVED / REJECTED
 ```
+
+Transitions are:
+
+* Explicit
+* Atomic
+* Audited
+* Permission-checked
+
+No implicit state changes exist.
 
 ---
 
-## 4. Core Domain Model
+## 3. Roles and Responsibilities
 
-### 4.1 Document
+Roles are implemented using **Django Groups**.
 
-**States**
+| Role     | Capabilities                                            |
+| -------- | ------------------------------------------------------- |
+| Employee | Create, edit (draft), submit documents                  |
+| Manager  | All Employee actions + approve/reject others’ documents |
+| Admin    | All Manager actions + system-wide audit visibility      |
 
-* `DRAFT`
-* `SUBMITTED`
-* `APPROVED`
-* `REJECTED`
+### Important Rules
 
-**Rules**
+* **Admins are approvers**, not automatic approvers
+* **No role can approve its own documents**
+* Superusers bypass group checks but are still blocked from self-approval
 
-* Only draft documents can be edited.
-* Only submitted documents can be approved/rejected.
-* Only owners can submit.
-* Only managers can decide.
+---
 
-**Canonical State Transition API**
+## 4. Permission Architecture
+
+### 4.1 View-Level Enforcement (Primary)
+
+Permissions are enforced using **explicit mixins**, not decorators or template logic.
+
+#### GroupRequiredMixin
+
+Base mixin for group-based access control.
 
 ```python
-Document.submit()
-Document.set_status(new_status, by_user)
+class GroupRequiredMixin(UserPassesTestMixin):
+    required_groups: list[str]
 ```
 
+Used to define:
+
+* `EmployeeRequiredMixin`
+* `ManagerRequiredMixin`
+* `AdminRequiredMixin`
+* `ApproverRequiredMixin`
+
+#### ApproverRequiredMixin
+
+Allows access to approval actions for:
+
+* Managers
+* Admins
+
+Self-approval is **explicitly forbidden at the view level**, not in the mixin.
+
 ---
 
-### 4.2 ApprovalStep
+### 4.2 Separation of Duties (Defense-in-Depth)
 
-Records **who decided what and when**.
+Self-approval prevention is enforced in **two layers**:
 
-* Immutable
-* Ordered by decision time
-* One document → many approval steps
+1. **Queryset filtering**
+
+```python
+.exclude(created_by=self.request.user)
+```
+
+1. **Transactional check**
+
+```python
+if document.created_by_id == request.user.id:
+    raise Http404
+```
+
+This ensures:
+
+* UI bypasses are ineffective
+* Concurrent approval attempts are safe
+* Integrity is preserved under race conditions
 
 ---
 
-### 4.3 AuditLog
+## 5. Approval Workflow Design
 
-Records **system actions**.
+### Unified Approval Queue
 
+There is **one approval queue** shared by Managers and Admins.
+
+* Located at: `/documents/approvals/`
+* Backed by `ApprovalQueueListView`
+* Lists only `SUBMITTED` documents
+* Excludes documents created by the current user
+
+This avoids:
+
+* Role fragmentation
+* Approval deadlocks
+* Manager/Admin duplication
+
+---
+
+## 6. Transactional Integrity
+
+All approval decisions are wrapped in **database transactions**:
+
+```python
+with transaction.atomic():
+    Document.objects.select_for_update()
+```
+
+This guarantees:
+
+* No double approvals
+* No lost updates
+* Correct audit ordering
+
+---
+
+## 7. Audit Architecture
+
+### Audit Trail Principles
+
+Every significant action:
+
+* Submission
+* Approval
+* Rejection
+
+Produces an immutable audit log entry.
+
+Audit logs record:
+
+* Timestamp
+* Action
 * Actor
-* Action string
+* Target document
 * Optional metadata
-* Timestamped
 
-Used for:
+### Audit Visibility
 
-* Compliance
-* Debugging
-* Reporting (future)
+| View                   | Access |
+| ---------------------- | ------ |
+| Per-document audit     | Admin  |
+| System-wide audit list | Admin  |
 
----
-
-## 5. Request Flow (High-Level)
-
-### Employee
-
-1. Create document → DRAFT
-2. Edit while DRAFT
-3. Submit → SUBMITTED
-
-### Manager
-
-1. View submitted documents
-2. Approve or reject
-3. ApprovalStep + AuditLog created atomically
+Audit data is **read-only** and cannot be altered via the UI.
 
 ---
 
-## 6. Transaction Boundaries
+## 8. Template Architecture
 
-Manager decisions are wrapped in:
+### Role Awareness
+
+Templates do **not** query the database.
+
+Instead, role flags are injected via a **single context processor**:
 
 ```python
-transaction.atomic()
-select_for_update()
+role_flags(request)
 ```
 
-Guarantees:
+Provides:
 
-* No double-approval
-* No race conditions
-* Consistent audit history
+* `is_employee`
+* `is_manager`
+* `is_admin`
 
----
+This ensures:
 
-## 7. Authentication & Login Routing
-
-* Django authentication is used.
-* Custom `RoleBasedLoginView` redirects users based on group:
-
-  * Managers → `/manager/documents/`
-  * Others → `/documents/`
+* Consistent role logic
+* Zero ORM usage in templates
+* Predictable UI behavior
 
 ---
 
-## 8. Templates
+## 9. URL and View Organization
 
-Templates are intentionally minimal:
+Views are grouped by responsibility:
 
-* No JavaScript
-* Server-rendered HTML
-* Focus on correctness over appearance
+| Area                     | Responsibility     |
+| ------------------------ | ------------------ |
+| document_list            | Personal documents |
+| document_create / update | Authoring          |
+| document_submit          | State transition   |
+| document_decision        | Approval decisions |
+| document_review_list     | Approval queue     |
+| document_audit           | Audit visibility   |
+
+URLs are:
+
+* Explicit
+* Namespaced
+* Non-overlapping
+
+No legacy Manager-only approval paths remain.
+
+---
+
+## 10. Security Posture Summary
+
+The system enforces security through:
+
+* Explicit permissions (no implicit trust)
+* Defense-in-depth checks
+* Transactional integrity
+* Audit-first design
+* No client-side authority assumptions
+
+This architecture intentionally favors **clarity and correctness over convenience**.
 
 ---
 
-## 9. What This Architecture Deliberately Avoids
+## 11. Architecture Status
 
-* Django permission flags
-* REST APIs
-* Background workers
-* UI frameworks
-* Over-engineering
+### Phase 4 Architecture: FROZEN
 
-These may be added later **without breaking core invariants**.
-
----
-
-## 10. Architecture Freeze Status
-
-**Status:** Frozen as of commit `ed8a959`
-**Changes allowed only if:**
-
-* They preserve invariants
-* They extend, not bypass, domain rules
-* They do not duplicate business logic in views
-
----
+* Core behavior finalized
+* No further structural changes planned
+* Future phases may add reporting or analytics **without altering core workflow**

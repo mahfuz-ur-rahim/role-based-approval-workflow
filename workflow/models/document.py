@@ -1,6 +1,7 @@
 from django.apps import apps
 from django.db import models
 from django.contrib.auth import get_user_model
+from .audit import AuditAction
 
 User = get_user_model()
 
@@ -59,13 +60,15 @@ class Document(models.Model):
             status=new_status,
         )
 
-        AuditLog.objects.create(
+        AuditLog.log(
+            action={
+                self.Status.APPROVED: AuditAction.DOCUMENT_APPROVED,
+                self.Status.REJECTED: AuditAction.DOCUMENT_REJECTED,
+            }[new_status],
             actor=by_user,
             document=self,
-            action=f"Document {new_status}",
             metadata={"document_id": self.id},
         )
-
 
     def submit(self):
         """

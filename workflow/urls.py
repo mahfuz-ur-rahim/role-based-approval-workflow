@@ -4,38 +4,31 @@ from workflow.views.document_list import DocumentListView
 from workflow.views.document_create import DocumentCreateView
 from workflow.views.document_submit import DocumentSubmitView
 from workflow.views import DocumentUpdateView
-from workflow.views import ManagerDocumentListView
+from workflow.views import ApprovalQueueListView
 from workflow.views import DocumentApproveView
 from workflow.views import DocumentRejectView
+from workflow.views import DocumentAuditLogView
 
 
-
-
-app_name = 'workflow'
+app_name = "workflow"
 
 urlpatterns = [
-    path('', 
-        home, 
-        name='home'),
-    path('documents/', 
-        DocumentListView.as_view(), 
-        name='document-list'),
-    path('documents/create/', 
-        DocumentCreateView.as_view(), 
-        name='document-create'),
+    path("", home, name="home"),
+    path("documents/", DocumentListView.as_view(), name="document-list"),
+    path("documents/create/", DocumentCreateView.as_view(), name="document-create"),
     path(
         "documents/<int:pk>/edit/",
         DocumentUpdateView.as_view(),
         name="document-edit",
     ),
     path(
-        'documents/<int:pk>/submit/',
+        "documents/<int:pk>/submit/",
         DocumentSubmitView.as_view(),
-        name='document-submit',
+        name="document-submit",
     ),
     path(
-        "manager/documents/",
-        ManagerDocumentListView.as_view(),
+        "documents/approvals/",
+        ApprovalQueueListView.as_view(),
         name="manager-document-list",
     ),
     path(
@@ -48,5 +41,9 @@ urlpatterns = [
         DocumentRejectView.as_view(),
         name="document-reject",
     ),
-
+    path(
+        "documents/<int:pk>/audit/",
+        DocumentAuditLogView.as_view(),
+        name="document-audit-log",
+    ),
 ]

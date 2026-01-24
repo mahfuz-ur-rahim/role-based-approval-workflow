@@ -1,0 +1,40 @@
+{% extends "base/base.html" %}
+
+{% block content %}
+<h2>Audit Trail — {{ document.title }}</h2>
+
+<table border="1">
+  <tr>
+    <th>Time</th>
+    <th>Action</th>
+    <th>Actor</th>
+    <th>Metadata</th>
+  </tr>
+
+  {% for log in logs %}
+    <tr>
+      <td>{{ log.created_at }}</td>
+      <td>{{ log.action }}</td>
+      <td>{{ log.actor }}</td>
+      <td><pre>{{ log.metadata|default:"—" }}</pre></td>
+    </tr>
+  {% empty %}
+    <tr>
+      <td colspan="4">No audit entries.</td>
+    </tr>
+  {% endfor %}
+</table>
+
+{% if is_paginated %}
+  <div>
+    {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}">Previous</a>
+    {% endif %}
+    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+    {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}">Next</a>
+    {% endif %}
+  </div>
+{% endif %}
+
+{% endblock %}
