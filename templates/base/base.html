@@ -4,6 +4,14 @@
     <title>Document Approval System</title>
   </head>
   <body>
+    {% if messages %}
+    <ul class="messages">
+      {% for message in messages %}
+      <li class="{{ message.tags }}">{{ message }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
     <nav>
       {% if user.is_authenticated %} {% if user.is_superuser %}
       <a href="{% url 'reports:audit-log-list' %}">Audit Logs</a>

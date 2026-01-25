@@ -1,6 +1,7 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect
 from django.views import View
+from django.contrib import messages
 
 from workflow.models import Document
 
@@ -20,5 +21,7 @@ class DocumentSubmitView(LoginRequiredMixin, View):
         )
 
         document.submit()
+
+        messages.success(request, "Document submitted for approval.")
 
         return redirect('workflow:document-list')
