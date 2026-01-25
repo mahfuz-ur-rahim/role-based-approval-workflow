@@ -81,7 +81,7 @@ def test_no_audit_log_created_on_failed_self_approval(
         reverse("workflow:document-approve", args=[doc.id])
     )
 
-    assert resp.status_code == 404
+    assert resp.status_code == 403
 
     assert not AuditLog.objects.filter(
         document=doc,

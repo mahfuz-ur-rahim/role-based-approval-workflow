@@ -1,7 +1,8 @@
 from django.db import transaction
-from django.http import Http404
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect
 from django.views import View
+from django.http import Http404
 
 from workflow.models import Document
 from workflow.mixins import ApproverRequiredMixin
@@ -20,9 +21,10 @@ class BaseDecisionView(ApproverRequiredMixin, View):
 
             if not document:
                 raise Http404
-
+            
             if document.created_by_id == request.user.id:
-                raise Http404
+                raise PermissionDenied("Self-approval is not allowed")
+
 
             document.set_status(self.decision_status, by_user=request.user)
 

@@ -57,8 +57,7 @@ def test_manager_cannot_self_approve(
         reverse("workflow:document-approve", args=[doc.id])
     )
 
-    # Current behavior: Http404
-    assert resp.status_code == 404
+    assert resp.status_code == 403
 
     doc.refresh_from_db()
     assert doc.status == Document.Status.SUBMITTED
