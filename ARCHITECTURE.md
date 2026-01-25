@@ -269,3 +269,10 @@ This architecture intentionally favors **clarity and correctness over convenienc
 * Messages framework used for success only
 * Authorization failures handled exclusively by 403/404
 * No business rules exposed in UI feedback
+
+### Audit Log Presentation & Visibility
+
+* Raw audit data preserved
+* Presentation varies by context (global vs document)
+* Admins have full visibility; others scoped
+* UX does not alter enforcement
