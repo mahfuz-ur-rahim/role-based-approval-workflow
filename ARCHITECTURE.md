@@ -111,6 +111,15 @@ This ensures:
 
 ---
 
+> #### Authorization & Error Semantics
+>
+> * Authorization failures (role violations, self-approval) raise `PermissionDenied` (403)
+> * Resource absence raises `Http404`
+> * Views enforce authorization; templates remain passive
+> * Tests assert HTTP semantics explicitly
+
+---
+
 ## 5. Approval Workflow Design
 
 ### Unified Approval Queue
