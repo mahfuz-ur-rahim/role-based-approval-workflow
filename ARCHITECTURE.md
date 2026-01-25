@@ -20,7 +20,7 @@ This system is designed to demonstrate a **secure, auditable, role-based approva
 
 Documents move through a **strict, linear lifecycle**:
 
-```
+```txt
 DRAFT → SUBMITTED → APPROVED / REJECTED
 ```
 
@@ -157,6 +157,12 @@ This guarantees:
 ---
 
 ## 7. Audit Architecture
+
+### Audit Logging Strategy
+
+* Authorization-bound actions (approve/reject) log audits at the view/service layer
+* Model signals may be used for creation-time logging only
+* Signals must never enforce permissions or workflow rules
 
 ### Audit Trail Principles
 
