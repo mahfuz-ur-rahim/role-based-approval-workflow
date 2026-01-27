@@ -1,68 +1,94 @@
-{% extends "base/base.html" %}
+{% extends "base/base.html" %} {% block content %}
 
-{% block content %}
-
-{% with request.GET.urlencode as querystring %}
 <h2>Audit Logs</h2>
+
+<p class="helptext">
+  This page shows all document actions across the system. Visible to
+  administrators only.
+</p>
+
 <form method="get">
   Action:
-  <input type="text" name="action" value="{{ request.GET.action }}">
+  <input type="text" name="action" value="{{ request.GET.action }}" />
 
   Actor:
-  <input type="text" name="actor" value="{{ request.GET.actor }}">
+  <input type="text" name="actor" value="{{ request.GET.actor }}" />
 
   From date:
-  <input type="date" name="date_from" value="{{ request.GET.date_from }}">
+  <input type="date" name="date_from" value="{{ request.GET.date_from }}" />
 
   <button type="submit">Filter</button>
 </form>
 
-<hr>
+<hr />
 
 <table border="1">
-  <tr>
-    <th>Time</th>
-    <th>Action</th>
-    <th>Actor</th>
-    <th>Document</th>
-    <th>Metadata</th>
-  </tr>
-
-  {% for log in logs %}
-  <tr>
-    <td>{{ log.created_at }}</td>
-    <td>{{ log.action }}</td>
-    <td>{{ log.actor }}</td>
-    <td>
-      {% if log.document %}
-        {{ log.document.title }}
-      {% else %}
-        —
-      {% endif %}
-    </td>
-    <td>
-      <pre>{{ log.metadata|default:"—" }}</pre>
-    </td>
-  </tr>
-
-  {% empty %}
+  <thead>
     <tr>
-      <td colspan="4">No audit entries.</td>
+      <th>Time</th>
+      <th>Action</th>
+      <th>Actor</th>
+      <th>Document</th>
+      <th>Metadata</th>
     </tr>
-  {% endfor %}
+  </thead>
+
+  <tbody>
+    {% for log in logs %}
+    <tr>
+      <td>{{ log.created_at }}</td>
+
+      <td>
+        {{ log.get_action_display }}
+        {% comment "Optional note for yourself" %}
+        {% if log.action == "DOCUMENT_CREATED" %}
+          Document created
+        {% elif log.action == "DOCUMENT_SUBMITTED" %}
+          Submitted for approval
+        {% elif log.action == "DOCUMENT_APPROVED" %}
+          Approved
+        {% elif log.action == "DOCUMENT_REJECTED" %}
+          Rejected
+        {% else %}
+          {{ log.action }}
+        {% endif %}
+        {% endcomment %}
+      </td>
+
+      <td>{{ log.actor }}</td>
+
+      <td>
+        {% if log.document %} {{ log.document.title }} {% else %} — {% endif %}
+      </td>
+
+      <td>
+        {% if log.metadata %}
+        <details>
+          <summary>Details</summary>
+          <ul>
+            {% for key, value in log.metadata.items %}
+            <li><strong>{{ key }}:</strong> {{ value }}</li>
+            {% endfor %}
+          </ul>
+        </details>
+        {% else %} — {% endif %}
+      </td>
+    </tr>
+    {% empty %}
+    <tr>
+      <td colspan="5">No audit entries.</td>
+    </tr>
+    {% endfor %}
+  </tbody>
 </table>
+
+{% if is_paginated %}
 <div>
-  {% if is_paginated %}
-    {% if page_obj.has_previous %}
-      <a href="?page={{ page_obj.previous_page_number }}&{{ querystring }}">Previous</a>
-    {% endif %}
-
-      Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-
-    {% if page_obj.has_next %}
-      <a href="?page={{ page_obj.next_page_number }}&{{ querystring }}">Next</a>
-    {% endif %}
+  {% if page_obj.has_previous %}
+  <a href="?page={{ page_obj.previous_page_number }}">Previous</a>
+  {% endif %} Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+  {% if page_obj.has_next %}
+  <a href="?page={{ page_obj.next_page_number }}">Next</a>
   {% endif %}
 </div>
-{% endwith %}
-{% endblock %}
+{% endif %} {% endblock %}

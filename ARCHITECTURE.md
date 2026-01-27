@@ -191,6 +191,11 @@ Audit logs record:
 
 Audit data is **read-only** and cannot be altered via the UI.
 
+### Audit & UX
+
+* Audit action labels rendered via `get_action_display`
+* Templates intentionally contain no audit/action conditionals
+
 ---
 
 ## 8. Template Architecture

@@ -1,4 +1,5 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib import messages
 from django.urls import reverse_lazy
 from django.views.generic import CreateView
 from workflow.models.audit import AuditAction
@@ -16,6 +17,8 @@ class DocumentCreateView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         form.instance.created_by = self.request.user
         response = super().form_valid(form)
+
+        messages.success(self.request, "Document created successfully.")
 
         AuditLog.log(
             action=AuditAction.DOCUMENT_CREATED,

@@ -1,40 +1,72 @@
-{% extends "base/base.html" %}
+{% extends "base/base.html" %} {% block content %}
 
-{% block content %}
 <h2>Audit Trail — {{ document.title }}</h2>
 
-<table border="1">
-  <tr>
-    <th>Time</th>
-    <th>Action</th>
-    <th>Actor</th>
-    <th>Metadata</th>
-  </tr>
+<p class="helptext">This page shows the approval history for this document.</p>
 
-  {% for log in logs %}
+<table border="1">
+  <thead>
+    <tr>
+      <th>Time</th>
+      <th>Action</th>
+      <th>Actor</th>
+      <th>Metadata</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {% for log in logs %}
     <tr>
       <td>{{ log.created_at }}</td>
-      <td>{{ log.action }}</td>
+
+      <td>
+        {{ log.get_action_display }}
+        {% comment "Optional note for yourself" %}
+        {% if log.action == "DOCUMENT_CREATED" %}
+          Document created
+        {% elif log.action == "DOCUMENT_SUBMITTED" %}
+          Submitted for approval
+        {% elif log.action == "DOCUMENT_APPROVED" %}
+          Approved
+        {% elif log.action == "DOCUMENT_REJECTED" %}
+          Rejected
+        {% else %}
+          {{ log.action }}
+        {% endif %}
+        {% endcomment %}
+      </td>
+
+
       <td>{{ log.actor }}</td>
-      <td><pre>{{ log.metadata|default:"—" }}</pre></td>
+
+      <td>
+        {% if log.metadata %}
+        <details>
+          <summary>Details</summary>
+          <ul>
+            {% for key, value in log.metadata.items %}
+            <li><strong>{{ key }}:</strong> {{ value }}</li>
+            {% endfor %}
+          </ul>
+        </details>
+        {% else %} — {% endif %}
+      </td>
     </tr>
-  {% empty %}
+    {% empty %}
     <tr>
       <td colspan="4">No audit entries.</td>
     </tr>
-  {% endfor %}
+    {% endfor %}
+  </tbody>
 </table>
 
 {% if is_paginated %}
-  <div>
-    {% if page_obj.has_previous %}
-      <a href="?page={{ page_obj.previous_page_number }}">Previous</a>
-    {% endif %}
-    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-    {% if page_obj.has_next %}
-      <a href="?page={{ page_obj.next_page_number }}">Next</a>
-    {% endif %}
-  </div>
-{% endif %}
-
-{% endblock %}
+<div>
+  {% if page_obj.has_previous %}
+  <a href="?page={{ page_obj.previous_page_number }}">Previous</a>
+  {% endif %} Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+  {% if page_obj.has_next %}
+  <a href="?page={{ page_obj.next_page_number }}">Next</a>
+  {% endif %}
+</div>
+{% endif %} {% endblock %}
