@@ -6,7 +6,7 @@ from workflow.services.document_workflow import (
     InvalidTransitionError,
     PermissionViolationError,
 )
-from workflow.state_machine import WorkflowAction
+from workflow.state_machine import WorkflowAction, TransitionFailure
 from workflow.models import Document, AuditLog, ApprovalStep, AuditAction
 
 @pytest.mark.django_db

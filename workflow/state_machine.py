@@ -1,6 +1,9 @@
 from enum import Enum
 from dataclasses import dataclass
 
+class TransitionFailure(Enum):
+    PERMISSION = "permission"
+    INVALID_STATE = "invalid_state"
 
 class DocumentStatus(str, Enum):
     DRAFT = "DRAFT"
@@ -18,9 +21,9 @@ class WorkflowAction(str, Enum):
 @dataclass(frozen=True)
 class TransitionResult:
     allowed: bool
-    reason: str | None = None
     next_status: DocumentStatus | None = None
-
+    reason: str | None = None
+    failure: TransitionFailure | None = None
 
 @dataclass(frozen=True)
 class ActorContext:
@@ -46,11 +49,13 @@ def evaluate_transition(
             return TransitionResult(
                 allowed=False,
                 reason="Only draft documents can be submitted",
+                failure=TransitionFailure.INVALID_STATE,
             )
         if not actor.is_owner:
             return TransitionResult(
                 allowed=False,
                 reason="Only the document owner can submit",
+                failure=TransitionFailure.PERMISSION,
             )
         return TransitionResult(
             allowed=True,
@@ -63,16 +68,19 @@ def evaluate_transition(
             return TransitionResult(
                 allowed=False,
                 reason="Only submitted documents can be approved",
+                failure=TransitionFailure.INVALID_STATE,
             )
         if actor.is_owner:
             return TransitionResult(
                 allowed=False,
                 reason="Self-approval is not allowed",
+                failure=TransitionFailure.PERMISSION,
             )
         if not (actor.is_manager or actor.is_admin):
             return TransitionResult(
                 allowed=False,
                 reason="Only managers or admins may approve",
+                failure=TransitionFailure.PERMISSION,
             )
         return TransitionResult(
             allowed=True,
@@ -85,16 +93,19 @@ def evaluate_transition(
             return TransitionResult(
                 allowed=False,
                 reason="Only submitted documents can be rejected",
+                failure=TransitionFailure.INVALID_STATE,
             )
         if actor.is_owner:
             return TransitionResult(
                 allowed=False,
                 reason="Self-rejection is not allowed",
+                failure=TransitionFailure.PERMISSION,
             )
         if not (actor.is_manager or actor.is_admin):
             return TransitionResult(
                 allowed=False,
                 reason="Only managers or admins may reject",
+                failure=TransitionFailure.PERMISSION,
             )
         return TransitionResult(
             allowed=True,
@@ -105,4 +116,5 @@ def evaluate_transition(
     return TransitionResult(
         allowed=False,
         reason="Unknown workflow action",
+        failure=TransitionFailure.INVALID_STATE,
     )

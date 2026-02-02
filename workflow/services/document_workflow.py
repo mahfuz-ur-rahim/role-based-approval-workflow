@@ -17,8 +17,10 @@ from workflow.state_machine import (
     DocumentStatus,
     WorkflowAction,
     ActorContext,
+    TransitionFailure,
     evaluate_transition,
 )
+
 from workflow.models.audit import AuditAction
 
 
@@ -60,8 +62,7 @@ class DocumentWorkflowService:
             )
 
             if not result.allowed:
-                # distinguish permission vs state violation
-                if "manager" in (result.reason or "").lower() or "owner" in (result.reason or "").lower():
+                if result.failure == TransitionFailure.PERMISSION:
                     raise PermissionViolationError(result.reason)
                 raise InvalidTransitionError(result.reason)
 
