@@ -5,19 +5,27 @@ def test_transition_result_allowed_contract(submitted_document, manager):
     result = evaluate_transition(
         current_status=DocumentStatus.SUBMITTED,
         action=WorkflowAction.APPROVE,
-        actor=ActorContext.from_user(manager),
+        actor=ActorContext(
+            is_owner=False,
+            is_manager=True,
+            is_admin=False,
+        ),
     )
 
     assert result.allowed is True
     assert result.next_status == DocumentStatus.APPROVED
     assert result.failure is None
-    assert isinstance(result.reason, str)
+    assert result.reason is None
 
 def test_transition_result_rejected_contract(draft_document, manager):
     result = evaluate_transition(
         current_status=DocumentStatus.DRAFT,
         action=WorkflowAction.APPROVE,
-        actor=ActorContext.from_user(manager),
+        actor=ActorContext(
+            is_owner=False,
+            is_manager=True,
+            is_admin=False,
+        ),
     )
 
     assert result.allowed is False

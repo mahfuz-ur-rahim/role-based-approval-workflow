@@ -145,6 +145,8 @@ This ensures:
 > * Explicit success/failure separation
 > * Stable, user-facing failure reasons
 > * No mutation or I/O
+> * On successful transitions, reason is None
+> * On rejected transitions, reason is a stable, user-facing explanatio
 
 ## 5. Approval Workflow Design
 
