@@ -137,6 +137,15 @@ This ensures:
 
 ---
 
+### 4.5 State Machine Guarantees
+
+#### The state machine exposes a frozen TransitionResult contract
+
+> * Pure evaluation only
+> * Explicit success/failure separation
+> * Stable, user-facing failure reasons
+> * No mutation or I/O
+
 ## 5. Approval Workflow Design
 
 ### Unified Approval Queue
