@@ -281,3 +281,18 @@ This architecture intentionally favors **clarity and correctness over convenienc
 * Presentation varies by context (global vs document)
 * Admins have full visibility; others scoped
 * UX does not alter enforcement
+
+## 12. Workflow Mutation Authority
+
+All document lifecycle transitions (submit, approve, reject) are executed
+exclusively via `DocumentWorkflowService`.
+
+Models, views, and signals are prohibited from mutating `Document.status`,
+creating `ApprovalStep`, or writing workflow-related `AuditLog` entries
+directly.
+
+This guarantees:
+
+* Exactly-once audit logging
+* Centralized permission enforcement
+* Transactional integrity
