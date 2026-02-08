@@ -128,6 +128,15 @@ This ensures:
 > * Single approval decision per document
 > * Approval steps restricted to terminal states
 
+---
+
+### 4.4 Concurrency & Idempotency Guarantees
+
+* Workflow transitions are idempotent by design.
+* Replayed transitions are rejected explicitly and produce no side effects.
+
+---
+
 ## 5. Approval Workflow Design
 
 ### Unified Approval Queue

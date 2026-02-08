@@ -65,6 +65,11 @@ class DocumentWorkflowService:
                 if result.failure == TransitionFailure.PERMISSION:
                     raise PermissionViolationError(result.reason)
                 raise InvalidTransitionError(result.reason)
+            
+            if result.next_status.value == document.status:
+                raise InvalidTransitionError(
+                    "Idempotent replay: transition already applied"
+                )
 
             # ---- APPLY MUTATION ----
             document.status = result.next_status.value

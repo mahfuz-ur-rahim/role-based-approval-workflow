@@ -4,6 +4,7 @@ from dataclasses import dataclass
 class TransitionFailure(Enum):
     PERMISSION = "permission"
     INVALID_STATE = "invalid_state"
+    IDEMPOTENT_REPLAY = "idempotent_replay"
 
 class DocumentStatus(str, Enum):
     DRAFT = "DRAFT"
