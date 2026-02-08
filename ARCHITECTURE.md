@@ -120,6 +120,14 @@ This ensures:
 
 ---
 
+### 4.3 Data Integrity Guarantees
+
+#### Database-level constraints mirror workflow invariants
+
+> * Document status validity
+> * Single approval decision per document
+> * Approval steps restricted to terminal states
+
 ## 5. Approval Workflow Design
 
 ### Unified Approval Queue

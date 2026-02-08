@@ -38,6 +38,19 @@ class Document(models.Model):
         indexes = [
             models.Index(fields=["status", "created_at"]),
         ]
+        constraints = [
+            models.CheckConstraint(
+                name="document_status_valid",
+                condition=models.Q(
+                    status__in=[
+                        "DRAFT",
+                        "SUBMITTED",
+                        "APPROVED",
+                        "REJECTED",
+                    ]
+                ),
+            ),
+        ]
 
     def __str__(self):
         return f"{self.title} [{self.status}]"

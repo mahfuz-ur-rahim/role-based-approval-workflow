@@ -36,6 +36,18 @@ class ApprovalStep(models.Model):
         indexes = [
             models.Index(fields=["document", "decided_at"]),
         ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["document"],
+                name="unique_approval_per_document",
+            ),
+            models.CheckConstraint(
+                name="approvalstep_terminal_status_only",
+                condition=models.Q(
+                    status__in=["APPROVED", "REJECTED"]
+                ),
+            ),
+        ]
 
     def __str__(self):
         return f"{self.document_id} → {self.status} by {self.decided_by}"
