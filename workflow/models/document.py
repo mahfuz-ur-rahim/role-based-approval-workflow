@@ -1,7 +1,5 @@
-from django.apps import apps
 from django.db import models
 from django.contrib.auth import get_user_model
-from .audit import AuditAction
 
 User = get_user_model()
 
@@ -44,39 +42,15 @@ class Document(models.Model):
     def __str__(self):
         return f"{self.title} [{self.status}]"
 
-    def set_status(self, new_status, by_user):
-        if self.status != self.Status.SUBMITTED:
-            raise ValueError("Only submitted documents can be decided")
+    def set_status(self, *args, **kwargs):
+        raise RuntimeError(
+            "Document.set_status() is deprecated. "
+            "Use DocumentWorkflowService instead."
+    )
 
-        ApprovalStep = apps.get_model("workflow", "ApprovalStep")
-        AuditLog = apps.get_model("workflow", "AuditLog")
-
-        self.status = new_status
-        self.save(update_fields=["status", "updated_at"])
-
-        ApprovalStep.objects.create(
-            document=self,
-            decided_by=by_user,
-            status=new_status,
-        )
-
-        AuditLog.log(
-            action={
-                self.Status.APPROVED: AuditAction.DOCUMENT_APPROVED,
-                self.Status.REJECTED: AuditAction.DOCUMENT_REJECTED,
-            }[new_status],
-            actor=by_user,
-            document=self,
-            metadata={"document_id": self.id},
-        )
-
-    def submit(self):
-        """
-        Transition: DRAFT -> SUBMITTED
-        """
-        if self.status != self.Status.DRAFT:
-            raise ValueError("Only draft documents can be submitted")
-
-        self.status = self.Status.SUBMITTED
-        self.save(update_fields=["status", "updated_at"])
+    def submit(self, *args, **kwargs):
+        raise RuntimeError(
+            "Document.submit() is deprecated. "
+            "Use DocumentWorkflowService instead."
+    )
     

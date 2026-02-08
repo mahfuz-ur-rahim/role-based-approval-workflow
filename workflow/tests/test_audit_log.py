@@ -1,6 +1,8 @@
 import pytest
 from django.urls import reverse
 from workflow.models import AuditLog, AuditAction, Document
+from workflow.services.document_workflow import DocumentWorkflowService, PermissionViolationError
+from workflow.state_machine import WorkflowAction
 
 @pytest.mark.django_db
 def test_audit_log_created_on_document_create(
@@ -73,7 +75,19 @@ def test_no_audit_log_created_on_failed_self_approval(
         content="x",
         created_by=manager,
     )
-    doc.submit()
+    owner_service = DocumentWorkflowService(actor=manager)
+    owner_service.perform(
+        document_id=doc.id,
+        action=WorkflowAction.SUBMIT,
+    )
+
+    # failed self-approval
+    approval_service = DocumentWorkflowService(actor=manager)
+    with pytest.raises(PermissionViolationError):
+        approval_service.perform(
+            document_id=doc.id,
+            action=WorkflowAction.APPROVE,
+        )
 
     client = client_logged_in(manager)
 

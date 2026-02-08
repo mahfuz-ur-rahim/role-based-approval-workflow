@@ -1,27 +1,28 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import redirect
 from django.views import View
 from django.contrib import messages
-
-from workflow.models import Document
-
+from django.http import HttpResponseBadRequest, HttpResponseForbidden
+from workflow.services.document_workflow import (
+    DocumentWorkflowService,
+    InvalidTransitionError,
+    PermissionViolationError,
+)
+from workflow.state_machine import WorkflowAction
 
 class DocumentSubmitView(LoginRequiredMixin, View):
-    """
-    Handles Draft -> Submitted transition.
-    POST-only, owner-only.
-    """
-
     def post(self, request, pk):
-        document = get_object_or_404(
-            Document,
-            pk=pk,
-            created_by=request.user,
-            status=Document.Status.DRAFT,
-        )
+        service = DocumentWorkflowService(actor=request.user)
 
-        document.submit()
+        try:
+            service.perform(
+                document_id=pk,
+                action=WorkflowAction.SUBMIT,
+            )
+        except PermissionViolationError:
+            return HttpResponseForbidden()
+        except InvalidTransitionError:
+            return HttpResponseBadRequest()
 
         messages.success(request, "Document submitted for approval.")
-
-        return redirect('workflow:document-list')
+        return redirect("workflow:document-list")

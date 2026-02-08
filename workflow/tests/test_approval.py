@@ -1,6 +1,8 @@
 import pytest
 from django.urls import reverse
 from workflow.models import Document, ApprovalStep
+from workflow.services.document_workflow import DocumentWorkflowService, PermissionViolationError
+from workflow.state_machine import WorkflowAction
 
 @pytest.mark.django_db
 def test_manager_can_approve_submitted_document(
@@ -49,7 +51,20 @@ def test_manager_cannot_self_approve(
         content="x",
         created_by=manager,
     )
-    doc.submit()
+    owner_service = DocumentWorkflowService(actor=manager)
+    owner_service.perform(
+        document_id=doc.id,
+        action=WorkflowAction.SUBMIT,
+    )
+
+    # attempt self-approval
+    approval_service = DocumentWorkflowService(actor=manager)
+    with pytest.raises(PermissionViolationError):
+        approval_service.perform(
+            document_id=doc.id,
+            action=WorkflowAction.APPROVE,
+        )
+    
 
     client = client_logged_in(manager)
 
