@@ -1,4 +1,19 @@
-{% extends "base/base.html" %} {% block content %}
-<h2>403 — Forbidden</h2>
-<p>You do not have permission to perform this action.</p>
+{% extends "base/base.html" %}
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h1 class="display-1 text-danger mb-4">403</h1>
+                    <h2 class="card-title mb-3">Forbidden</h2>
+                    <p class="lead mb-4">You do not have permission to perform this action.</p>
+                    <a href="{% url 'workflow:document-list' %}" class="btn btn-primary">
+                        <i class="fas fa-home mr-2"></i>Return to Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

@@ -1,42 +1,119 @@
 <!doctype html>
-<html>
-  <head>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>Document Approval System</title>
-  </head>
-  <body>
-    {% if messages %}
-    <ul class="messages">
-      {% for message in messages %}
-      <li class="{{ message.tags }}">{{ message }}</li>
-      {% endfor %}
-    </ul>
-    {% endif %}
-
-    <nav>
-      {% if user.is_authenticated %} {% if user.is_superuser %}
-      <a href="{% url 'reports:audit-log-list' %}">Audit Logs</a>
-      {% endif %}
-
-      <a href="{% url 'workflow:document-list' %}">Documents</a>
-      {% if is_manager or is_admin %}
-      <a href="{% url 'workflow:manager-document-list' %}">
-        Pending Approvals
-      </a>
-      {% endif %}
-
-      <a href="{% url 'workflow:document-create' %}">Create Document</a>
-
-      <form method="post" action="{% url 'logout' %}" style="display: inline">
-        {% csrf_token %}
-        <button type="submit">Logout</button>
-      </form>
-      {% else %}
-      <a href="{% url 'login' %}">Login</a>
-      {% endif %}
+    <!-- Bootstrap 4 CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
+    <style>
+        body {
+            padding-top: 56px;
+        }
+        @media (min-width: 992px) {
+            body {
+                padding-top: 56px;
+            }
+        }
+        .helptext {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        .messages {
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'workflow:document-list' %}">
+                <i class="fas fa-file-alt mr-2"></i>Doc Approval
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav mr-auto">
+                    {% if user.is_authenticated %}
+                        {% if user.is_superuser %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'reports:audit-log-list' %}">
+                                <i class="fas fa-history mr-1"></i>Audit Logs
+                            </a>
+                        </li>
+                        {% endif %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'workflow:document-list' %}">
+                                <i class="fas fa-folder mr-1"></i>Documents
+                            </a>
+                        </li>
+                        {% if is_manager or is_admin %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'workflow:manager-document-list' %}">
+                                <i class="fas fa-clock mr-1"></i>Pending Approvals
+                            </a>
+                        </li>
+                        {% endif %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'workflow:document-create' %}">
+                                <i class="fas fa-plus-circle mr-1"></i>Create Document
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+                <ul class="navbar-nav">
+                    {% if user.is_authenticated %}
+                        <li class="nav-item">
+                            <span class="navbar-text mr-3">
+                                <i class="fas fa-user mr-1"></i>{{ user.username }}
+                            </span>
+                        </li>
+                        <li class="nav-item">
+                            <form method="post" action="{% url 'logout' %}" class="form-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-light btn-sm">
+                                    <i class="fas fa-sign-out-alt mr-1"></i>Logout
+                                </button>
+                            </form>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'login' %}">
+                                <i class="fas fa-sign-in-alt mr-1"></i>Login
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
     </nav>
 
-    <hr />
+    <!-- Messages -->
+    <div class="container mt-4">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
 
-    {% block content %}{% endblock %}
-  </body>
+    <!-- Main Content -->
+    <main class="container mt-4">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Bootstrap 4 JS (Optional - for navbar toggle) -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
 </html>
