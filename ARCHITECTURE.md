@@ -120,6 +120,42 @@ This ensures:
 
 ---
 
+#### Error Semantics & Visibility Guarantees
+
+The system enforces strict separation between:
+
+1. Visibility (existence disclosure)
+2. Authorization (permission to act)
+3. Workflow validity (state machine correctness)
+
+##### Visibility (404)
+
+A user must not be able to infer the existence of documents
+outside their permitted visibility boundary.
+
+* Employees may only see their own documents.
+* Managers and Admins may see all documents.
+* Unauthorized visibility attempts return 404.
+
+##### Authorization (403)
+
+If a user can see a document but is not permitted to perform
+a specific action (e.g., self-approval), the system returns 403.
+
+##### Workflow Invalid State (400)
+
+If an authorized user attempts a state transition that is
+not allowed by the pure state machine, the system returns 400.
+
+##### Invariant
+
+View-layer logic must enforce visibility before invoking
+DocumentWorkflowService.
+
+The service layer remains the single mutation authority.
+
+---
+
 ### 4.3 Data Integrity Guarantees
 
 #### Database-level constraints mirror workflow invariants
