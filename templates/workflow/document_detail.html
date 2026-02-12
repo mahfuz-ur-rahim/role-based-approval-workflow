@@ -1,0 +1,51 @@
+{% extends "base/base.html" %}
+
+{% block content %}
+<div class="card shadow">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">
+            <i class="fas fa-file-alt mr-2"></i>
+            {{ document.title }}
+        </h4>
+    </div>
+
+    <div class="card-body">
+
+        <div class="mb-3">
+            <strong>Status:</strong>
+            {% if document.status == 'DRAFT' %}
+                <span class="badge badge-secondary">{{ document.get_status_display }}</span>
+            {% elif document.status == 'SUBMITTED' %}
+                <span class="badge badge-warning">{{ document.get_status_display }}</span>
+            {% elif document.status == 'APPROVED' %}
+                <span class="badge badge-success">{{ document.get_status_display }}</span>
+            {% elif document.status == 'REJECTED' %}
+                <span class="badge badge-danger">{{ document.get_status_display }}</span>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            <strong>Owner:</strong>
+            {{ document.created_by.username }}
+        </div>
+
+        <div class="mb-3">
+            <strong>Created At:</strong>
+            {{ document.created_at }}
+        </div>
+
+        <hr>
+
+        <div>
+            {{ document.content|safe }}
+        </div>
+
+        <div class="mt-4">
+            <a href="{% url 'workflow:document-list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left mr-1"></i>Back to Documents
+            </a>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

@@ -1,4 +1,5 @@
 from django.urls import path
+from workflow.views.document_detail import DocumentDetailView
 from workflow.views.home import home
 from workflow.views.document_list import DocumentListView
 from workflow.views.document_create import DocumentCreateView
@@ -13,9 +14,26 @@ from workflow.views import DocumentAuditLogView
 app_name = "workflow"
 
 urlpatterns = [
-    path("", home, name="home"),
-    path("documents/", DocumentListView.as_view(), name="document-list"),
-    path("documents/create/", DocumentCreateView.as_view(), name="document-create"),
+    path(
+        "", 
+        home, 
+        name="home"
+    ),
+    path(
+        "documents/", 
+        DocumentListView.as_view(), 
+        name="document-list"
+    ),
+    path(
+        "documents/create/", 
+         DocumentCreateView.as_view(), 
+         name="document-create"
+    ),
+    path(
+        "documents/<int:pk>/",
+        DocumentDetailView.as_view(),
+        name="document-detail",
+    ),
     path(
         "documents/<int:pk>/edit/",
         DocumentUpdateView.as_view(),
