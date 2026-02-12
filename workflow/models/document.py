@@ -59,11 +59,10 @@ class Document(models.Model):
         raise RuntimeError(
             "Document.set_status() is deprecated. "
             "Use DocumentWorkflowService instead."
-    )
+        )
 
     def submit(self, *args, **kwargs):
         raise RuntimeError(
             "Document.submit() is deprecated. "
             "Use DocumentWorkflowService instead."
-    )
-    
+        )

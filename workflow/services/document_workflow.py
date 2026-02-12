@@ -1,3 +1,15 @@
+from workflow.models.audit import AuditAction
+from workflow.state_machine import (
+    DocumentStatus,
+    WorkflowAction,
+    ActorContext,
+    TransitionFailure,
+    evaluate_transition,
+)
+from django.apps import apps
+from django.db import transaction
+
+
 class WorkflowError(Exception):
     """Base workflow exception"""
 
@@ -8,20 +20,6 @@ class InvalidTransitionError(WorkflowError):
 
 class PermissionViolationError(WorkflowError):
     pass
-
-
-from django.db import transaction
-from django.apps import apps
-
-from workflow.state_machine import (
-    DocumentStatus,
-    WorkflowAction,
-    ActorContext,
-    TransitionFailure,
-    evaluate_transition,
-)
-
-from workflow.models.audit import AuditAction
 
 
 class DocumentWorkflowService:
@@ -40,7 +38,6 @@ class DocumentWorkflowService:
             is_admin="Admin" in groups or self.actor.is_superuser,
         )
 
-
     def perform(self, *, document_id: int, action: WorkflowAction):
         Document = apps.get_model("workflow", "Document")
         ApprovalStep = apps.get_model("workflow", "ApprovalStep")
@@ -56,7 +53,7 @@ class DocumentWorkflowService:
             actor_ctx = self._actor_context(document)
 
             result = evaluate_transition(
-                current_status=DocumentStatus(document.status),
+                current_status=DocumentStatus(document.status),  # type: ignore
                 action=action,
                 actor=actor_ctx,
             )
@@ -65,14 +62,14 @@ class DocumentWorkflowService:
                 if result.failure == TransitionFailure.PERMISSION:
                     raise PermissionViolationError(result.reason)
                 raise InvalidTransitionError(result.reason)
-            
-            if result.next_status.value == document.status:
+
+            if result.next_status.value == document.status:  # type: ignore
                 raise InvalidTransitionError(
                     "Idempotent replay: transition already applied"
                 )
 
             # ---- APPLY MUTATION ----
-            document.status = result.next_status.value
+            document.status = result.next_status.value  # type: ignore
             document.save(update_fields=["status", "updated_at"])
 
             # ---- APPROVAL STEP ----
@@ -80,11 +77,11 @@ class DocumentWorkflowService:
                 ApprovalStep.objects.create(
                     document=document,
                     decided_by=self.actor,
-                    status=document.status,
+                    status=document.status,  # type: ignore
                 )
 
             # ---- AUDIT LOG (EXACTLY ONE) ----
-            AuditLog.log(
+            AuditLog.log(  # type: ignore
                 action={
                     WorkflowAction.SUBMIT: AuditAction.DOCUMENT_SUBMITTED,
                     WorkflowAction.APPROVE: AuditAction.DOCUMENT_APPROVED,
@@ -92,7 +89,7 @@ class DocumentWorkflowService:
                 }[action],
                 actor=self.actor,
                 document=document,
-                metadata={"document_id": document.id},
+                metadata={"document_id": document.id},  # type: ignore
             )
 
             return document

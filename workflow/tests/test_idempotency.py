@@ -22,7 +22,8 @@ def test_idempotent_replay_creates_no_side_effects(manager, submitted_document):
         )
 
     # Side-effect guarantees
-    assert ApprovalStep.objects.filter(document=submitted_document).count() == 1
+    assert ApprovalStep.objects.filter(
+        document=submitted_document).count() == 1
     assert AuditLog.objects.filter(
         document=submitted_document,
         action=AuditAction.DOCUMENT_APPROVED,

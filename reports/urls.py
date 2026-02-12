@@ -6,8 +6,8 @@ app_name = "reports"
 
 urlpatterns = [
     path(
-        "audit-logs/", 
-        AuditLogListView.as_view(), 
+        "audit-logs/",
+        AuditLogListView.as_view(),
         name="audit-log-list",
     ),
     path(

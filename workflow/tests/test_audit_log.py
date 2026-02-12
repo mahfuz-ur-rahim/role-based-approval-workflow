@@ -4,6 +4,7 @@ from workflow.models import AuditLog, AuditAction, Document
 from workflow.services.document_workflow import DocumentWorkflowService, PermissionViolationError
 from workflow.state_machine import WorkflowAction
 
+
 @pytest.mark.django_db
 def test_audit_log_created_on_document_create(
     client_logged_in, employee
@@ -30,6 +31,7 @@ def test_audit_log_created_on_document_create(
 
     assert log.count() == 1
 
+
 @pytest.mark.django_db
 def test_audit_log_created_on_approval(
     client_logged_in, manager, submitted_document
@@ -47,6 +49,7 @@ def test_audit_log_created_on_approval(
     )
 
     assert log.count() == 1
+
 
 @pytest.mark.django_db
 def test_audit_log_created_on_rejection(
@@ -66,6 +69,7 @@ def test_audit_log_created_on_rejection(
 
     assert log.count() == 1
 
+
 @pytest.mark.django_db
 def test_no_audit_log_created_on_failed_self_approval(
     client_logged_in, manager
@@ -77,7 +81,7 @@ def test_no_audit_log_created_on_failed_self_approval(
     )
     owner_service = DocumentWorkflowService(actor=manager)
     owner_service.perform(
-        document_id=doc.id,
+        document_id=doc.id,  # type: ignore
         action=WorkflowAction.SUBMIT,
     )
 
@@ -85,14 +89,14 @@ def test_no_audit_log_created_on_failed_self_approval(
     approval_service = DocumentWorkflowService(actor=manager)
     with pytest.raises(PermissionViolationError):
         approval_service.perform(
-            document_id=doc.id,
+            document_id=doc.id,  # type: ignore
             action=WorkflowAction.APPROVE,
         )
 
     client = client_logged_in(manager)
 
     resp = client.post(
-        reverse("workflow:document-approve", args=[doc.id])
+        reverse("workflow:document-approve", args=[doc.id])  # type: ignore
     )
 
     assert resp.status_code == 403

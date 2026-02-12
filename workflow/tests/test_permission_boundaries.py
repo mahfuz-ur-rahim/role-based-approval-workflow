@@ -16,7 +16,8 @@ def test_employee_cannot_submit_other_users_document(
     client = client_logged_in(employee)
 
     resp = client.post(
-        reverse("workflow:document-submit", args=[other_doc.id])
+        reverse("workflow:document-submit",
+                args=[other_doc.id])  # type: ignore
     )
 
     assert resp.status_code == 404
@@ -35,7 +36,8 @@ def test_employee_cannot_view_other_users_audit(
     client = client_logged_in(employee)
 
     resp = client.get(
-        reverse("workflow:document-audit-log", args=[other_doc.id])
+        reverse("workflow:document-audit-log",
+                args=[other_doc.id])  # type: ignore
     )
 
     assert resp.status_code == 404

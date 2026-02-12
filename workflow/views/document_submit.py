@@ -11,6 +11,7 @@ from workflow.services.document_workflow import (
 )
 from workflow.state_machine import WorkflowAction
 
+
 class DocumentSubmitView(LoginRequiredMixin, View):
     def post(self, request, pk):
         # 1️⃣ Visibility Gate — owner only
@@ -24,7 +25,7 @@ class DocumentSubmitView(LoginRequiredMixin, View):
 
         try:
             service.perform(
-                document_id=document.id,
+                document_id=document.id,  # type: ignore
                 action=WorkflowAction.SUBMIT,
             )
         except InvalidTransitionError:

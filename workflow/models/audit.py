@@ -3,12 +3,12 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+
 class AuditAction(models.TextChoices):
     DOCUMENT_CREATED = "DOCUMENT_CREATED", "Document created"
     DOCUMENT_SUBMITTED = "DOCUMENT_SUBMITTED", "Document submitted"
     DOCUMENT_APPROVED = "DOCUMENT_APPROVED", "Document approved"
     DOCUMENT_REJECTED = "DOCUMENT_REJECTED", "Document rejected"
-
 
 
 class AuditLog(models.Model):

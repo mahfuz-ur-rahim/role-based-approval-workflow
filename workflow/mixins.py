@@ -11,7 +11,7 @@ class GroupRequiredMixin(UserPassesTestMixin):
     required_groups: list[str] = []
 
     def test_func(self):
-        user = self.request.user
+        user = self.request.user # type: ignore
 
         if not user.is_authenticated:
             return False

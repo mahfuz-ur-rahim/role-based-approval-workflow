@@ -5,6 +5,7 @@ from django.http import Http404
 
 from workflow.models import Document
 
+
 class DocumentDetailView(LoginRequiredMixin, DetailView):
     model = Document
     template_name = "workflow/document_detail.html"

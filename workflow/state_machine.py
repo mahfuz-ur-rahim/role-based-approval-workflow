@@ -1,10 +1,12 @@
 from enum import Enum
 from dataclasses import dataclass
 
+
 class TransitionFailure(Enum):
     PERMISSION = "permission"
     INVALID_STATE = "invalid_state"
     IDEMPOTENT_REPLAY = "idempotent_replay"
+
 
 class DocumentStatus(str, Enum):
     DRAFT = "DRAFT"
@@ -18,6 +20,7 @@ class WorkflowAction(str, Enum):
     APPROVE = "APPROVE"
     REJECT = "REJECT"
 
+
 """
 TransitionResult is a pure, side-effect-free evaluation outcome.
 
@@ -28,6 +31,7 @@ Contract guarantees:
 - evaluate_transition() MUST NOT mutate state or touch the database
 """
 
+
 @dataclass(frozen=True)
 class TransitionResult:
     allowed: bool
@@ -35,11 +39,13 @@ class TransitionResult:
     failure: TransitionFailure | None = None
     reason: str | None = None
 
+
 @dataclass(frozen=True)
 class ActorContext:
     is_owner: bool
     is_manager: bool
     is_admin: bool
+
 
 def _finalize(result: TransitionResult) -> TransitionResult:
     if result.allowed:
@@ -49,6 +55,7 @@ def _finalize(result: TransitionResult) -> TransitionResult:
         assert result.next_status is None
         assert result.failure is not None
     return result
+
 
 def evaluate_transition(
     *,

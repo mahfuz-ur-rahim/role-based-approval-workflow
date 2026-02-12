@@ -50,4 +50,4 @@ class ApprovalStep(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.document_id} → {self.status} by {self.decided_by}"
+        return f"{self.document_id} → {self.status} by {self.decided_by}" # type: ignore

@@ -15,7 +15,8 @@ class DocumentAuditLogView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         return self.request.user.groups.filter(name="Admin").exists()
 
     def get_queryset(self):
-        self.document = get_object_or_404(Document, id=self.kwargs["document_id"])
+        self.document = get_object_or_404(
+            Document, id=self.kwargs["document_id"])
         return (
             AuditLog.objects
             .filter(document=self.document)

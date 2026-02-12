@@ -17,6 +17,7 @@ def test_transition_result_allowed_contract(submitted_document, manager):
     assert result.failure is None
     assert result.reason is None
 
+
 def test_transition_result_rejected_contract(draft_document, manager):
     result = evaluate_transition(
         current_status=DocumentStatus.DRAFT,

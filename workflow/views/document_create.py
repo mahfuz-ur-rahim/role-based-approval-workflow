@@ -23,8 +23,8 @@ class DocumentCreateView(LoginRequiredMixin, CreateView):
         AuditLog.log(
             action=AuditAction.DOCUMENT_CREATED,
             actor=self.request.user,
-            document=self.object,
-            metadata={"document_id": self.object.id},
+            document=self.object, # type: ignore
+            metadata={"document_id": self.object.id}, # type: ignore
         )
         return response
 

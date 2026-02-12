@@ -12,6 +12,7 @@ from workflow.services.document_workflow import (
 )
 from workflow.state_machine import WorkflowAction
 
+
 class DocumentApproveView(ApproverRequiredMixin, View):
     def post(self, request, pk):
         # 1️⃣ Visibility Gate (document must exist)
@@ -27,7 +28,7 @@ class DocumentApproveView(ApproverRequiredMixin, View):
 
         try:
             service.perform(
-                document_id=document.id,
+                document_id=document.id,  # type: ignore
                 action=WorkflowAction.APPROVE,
             )
         except PermissionViolationError:
@@ -41,7 +42,6 @@ class DocumentApproveView(ApproverRequiredMixin, View):
 
         messages.success(request, "Document approved.")
         return redirect("workflow:manager-document-list")
-
 
 
 class DocumentRejectView(ApproverRequiredMixin, View):
@@ -59,7 +59,7 @@ class DocumentRejectView(ApproverRequiredMixin, View):
 
         try:
             service.perform(
-                document_id=document.id,
+                document_id=document.id,  # type: ignore
                 action=WorkflowAction.REJECT,
             )
         except PermissionViolationError:
@@ -72,4 +72,4 @@ class DocumentRejectView(ApproverRequiredMixin, View):
             )
 
         messages.success(request, "Document rejected.")
-        return redirect("workflow:manager-document-list")    
+        return redirect("workflow:manager-document-list")

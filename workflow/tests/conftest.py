@@ -11,17 +11,20 @@ def employee(db):
     user.groups.add(Group.objects.get(name="Employee"))
     return user
 
+
 @pytest.fixture
 def manager(db):
     user = User.objects.create_user(username="manager", password="pass")
     user.groups.add(Group.objects.get(name="Manager"))
     return user
 
+
 @pytest.fixture
 def admin(db):
     user = User.objects.create_user(username="admin", password="pass")
     user.groups.add(Group.objects.get(name="Admin"))
     return user
+
 
 @pytest.fixture
 def draft_document(db, employee):
@@ -30,6 +33,7 @@ def draft_document(db, employee):
         content="content",
         created_by=employee,
     )
+
 
 @pytest.fixture
 def submitted_document(db, employee):
@@ -40,10 +44,11 @@ def submitted_document(db, employee):
     )
     service = DocumentWorkflowService(actor=employee)
     service.perform(
-        document_id=doc.id,
+        document_id=doc.id,  # type: ignore
         action=WorkflowAction.SUBMIT,
     )
     return doc
+
 
 @pytest.fixture
 def client_logged_in(client):

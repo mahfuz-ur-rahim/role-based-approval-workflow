@@ -15,19 +15,19 @@ app_name = "workflow"
 
 urlpatterns = [
     path(
-        "", 
-        home, 
+        "",
+        home,
         name="home"
     ),
     path(
-        "documents/", 
-        DocumentListView.as_view(), 
+        "documents/",
+        DocumentListView.as_view(),
         name="document-list"
     ),
     path(
-        "documents/create/", 
-         DocumentCreateView.as_view(), 
-         name="document-create"
+        "documents/create/",
+        DocumentCreateView.as_view(),
+        name="document-create"
     ),
     path(
         "documents/<int:pk>/",
