@@ -8,5 +8,21 @@ class DocumentForm(forms.ModelForm):
         model = Document
         fields = ['title', 'content']
         widgets = {
-            'content': SummernoteWidget(),
+            'content': SummernoteWidget(
+                attrs={
+                    "summernote": {
+                        "width": "100%",
+                        "height": 400,
+                        "toolbar": [
+                            ["style", ["style"]],
+                            ["font", ["bold", "italic", "underline", "clear"]],
+                            ["fontsize", ["fontsize"]],
+                            ["color", ["color"]],
+                            ["para", ["ul", "ol", "paragraph"]],
+                            ["insert", ["link", "picture", "table"]],
+                            ["view", ["fullscreen", "codeview"]],
+                        ],
+                    }
+                }
+            ),
         }
