@@ -48,7 +48,6 @@
                         <th scope="col">Action</th>
                         <th scope="col">Actor</th>
                         <th scope="col">Document</th>
-                        <th scope="col">Metadata</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -56,9 +55,19 @@
                     <tr>
                         <td>{{ log.created_at }}</td>
                         <td>
-                            <span class="badge badge-{{ log.get_action_display|lower }}">
-                                {{ log.get_action_display }}
-                            </span>
+                            {% if log.action == 'CREATED' %}
+                                <span class="badge badge-primary">Created</span>
+                            {% elif log.action == 'SUBMITTED' %}
+                                <span class="badge badge-warning">Submitted</span>
+                            {% elif log.action == 'APPROVED' %}
+                                <span class="badge badge-success">Approved</span>
+                            {% elif log.action == 'REJECTED' %}
+                                <span class="badge badge-danger">Rejected</span>
+                            {% else %}
+                                <span class="badge badge-secondary">
+                                    {{ log.get_action_display }}
+                                </span>
+                            {% endif %}
                         </td>
                         <td>{{ log.actor }}</td>
                         <td>
@@ -67,30 +76,11 @@
                             {% else %}
                                 <span class="text-muted">—</span>
                             {% endif %}
-                        </td>
-                        <td>
-                            {% if log.metadata %}
-                            <button class="btn btn-sm btn-outline-info" type="button" data-toggle="collapse" 
-                                    data-target="#metadata{{ log.id }}">
-                                <i class="fas fa-eye mr-1"></i>Details
-                            </button>
-                            <div class="collapse" id="metadata{{ log.id }}">
-                                <div class="card card-body mt-2">
-                                    <ul class="list-unstyled mb-0">
-                                        {% for key, value in log.metadata.items %}
-                                        <li><strong>{{ key }}:</strong> {{ value }}</li>
-                                        {% endfor %}
-                                    </ul>
-                                </div>
-                            </div>
-                            {% else %}
-                            <span class="text-muted">—</span>
-                            {% endif %}
-                        </td>
+                        </td>                        
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center text-muted">
+                        <td colspan="4" class="text-center text-muted">
                             <i class="fas fa-inbox fa-2x mb-2"></i><br>
                             No audit entries found.
                         </td>
