@@ -18,6 +18,9 @@ from django.contrib import admin
 from django.urls import path, include
 from django.contrib.auth.views import LogoutView
 from workflow.views import RoleBasedLoginView
+from django.conf import settings
+from django.conf.urls.static import static
+
 
 urlpatterns = [
     path("summernote/", include('django_summernote.urls')),
@@ -27,3 +30,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("reports/", include(("reports.urls", "reports"), namespace="reports")),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL,
+                          document_root=settings.MEDIA_ROOT)
