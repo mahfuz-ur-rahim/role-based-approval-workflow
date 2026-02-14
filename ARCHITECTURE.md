@@ -360,3 +360,15 @@ This guarantees:
 * Exactly-once audit logging
 * Centralized permission enforcement
 * Transactional integrity
+
+## 13. Observability Layer
+
+The system includes a passive observability adapter inside the service layer.
+This layer:
+
+* Emits structured logs
+* Emits transition metrics
+* Emits failure diagnostics
+* Does NOT modify workflow behavior
+* Does NOT participate in transactions
+* Must never raise or swallow business exceptions
