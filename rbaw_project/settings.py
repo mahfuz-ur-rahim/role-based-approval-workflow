@@ -140,10 +140,24 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "structured": {
-            "format": "%(asctime)s %(levelname)s %(name)s %(message)s "
-                      "actor=%(actor_id)s document=%(document_id)s "
-                      "action=%(action)s allowed=%(allowed)s "
-                      "failure=%(failure)s latency_ms=%(latency_ms)s",
+            "()": "logging.Formatter",
+            "format": (
+                "%(asctime)s %(levelname)s %(name)s %(message)s "
+                "actor=%(actor_id)s "
+                "document=%(document_id)s "
+                "action=%(action)s "
+                "allowed=%(allowed)s "
+                "failure=%(failure)s "
+                "latency_ms=%(latency_ms)s"
+            ),
+            "defaults": {
+                "actor_id": None,
+                "document_id": None,
+                "action": None,
+                "allowed": None,
+                "failure": None,
+                "latency_ms": None,
+            },
         },
     },
     "handlers": {

@@ -8,6 +8,8 @@ from workflow.state_machine import (
 )
 from django.apps import apps
 from django.db import transaction
+import time
+from workflow.observability import WorkflowEventLogger
 
 
 class WorkflowError(Exception):
@@ -49,6 +51,12 @@ class DocumentWorkflowService:
                 .select_for_update()
                 .get(pk=document_id)
             )
+            start_time = WorkflowEventLogger.log_transition_attempt(
+                actor_id=self.actor.id,
+                document_id=document.id,  # type: ignore
+                current_status=document.status,  # type: ignore
+                action=action.name,
+            )
 
             actor_ctx = self._actor_context(document)
 
@@ -59,11 +67,33 @@ class DocumentWorkflowService:
             )
 
             if not result.allowed:
+                latency_ms = (time.monotonic() - start_time) * 1000
+
+                WorkflowEventLogger.log_transition_result(
+                    actor_id=self.actor.id,
+                    document_id=document.id,  # type: ignore
+                    action=action.name,
+                    allowed=False,
+                    failure=result.failure.name if result.failure else "UNKNOWN",
+                    latency_ms=latency_ms,
+                )
+
                 if result.failure == TransitionFailure.PERMISSION:
                     raise PermissionViolationError(result.reason)
                 raise InvalidTransitionError(result.reason)
 
             if result.next_status.value == document.status:  # type: ignore
+                latency_ms = (time.monotonic() - start_time) * 1000
+
+                WorkflowEventLogger.log_transition_result(
+                    actor_id=self.actor.id,
+                    document_id=document.id,  # type: ignore
+                    action=action.name,
+                    allowed=False,
+                    failure="IDEMPOTENT_REPLAY",
+                    latency_ms=latency_ms,
+                )
+
                 raise InvalidTransitionError(
                     "Idempotent replay: transition already applied"
                 )
@@ -90,6 +120,17 @@ class DocumentWorkflowService:
                 actor=self.actor,
                 document=document,
                 metadata={"document_id": document.id},  # type: ignore
+            )
+
+            latency_ms = (time.monotonic() - start_time) * 1000
+
+            WorkflowEventLogger.log_transition_result(
+                actor_id=self.actor.id,
+                document_id=document.id,  # type: ignore
+                action=action.name,
+                allowed=True,
+                failure=None,
+                latency_ms=latency_ms,
             )
 
             return document

@@ -378,3 +378,13 @@ This layer:
 * The system emits structured transition logs via workflow.observability.
 * Logging is passive and isolated from workflow execution.
 * It must never raise or influence business logic.
+
+#### Instrumentation is embedded inside DocumentWorkflowService.perform()
+
+Logging occurs:
+
+* At transition attempt
+* On transition success
+* On controlled failure paths
+
+No transactional or behavioral changes were introduced.
