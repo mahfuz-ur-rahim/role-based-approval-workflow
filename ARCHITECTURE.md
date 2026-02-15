@@ -6,11 +6,11 @@
 
 This system is designed to demonstrate a **secure, auditable, role-based approval workflow** with explicit enforcement of separation of duties. The architecture prioritizes:
 
-* Clear responsibility boundaries between roles
-* Explicit workflow state transitions
-* Auditability of all sensitive actions
-* Defense-in-depth (UI, view, and data-layer checks)
-* Educational clarity over framework “magic”
+- Clear responsibility boundaries between roles
+- Explicit workflow state transitions
+- Auditability of all sensitive actions
+- Defense-in-depth (UI, view, and data-layer checks)
+- Educational clarity over framework “magic”
 
 ---
 
@@ -26,10 +26,10 @@ DRAFT → SUBMITTED → APPROVED / REJECTED
 
 Transitions are:
 
-* Explicit
-* Atomic
-* Audited
-* Permission-checked
+- Explicit
+- Atomic
+- Audited
+- Permission-checked
 
 No implicit state changes exist.
 
@@ -40,16 +40,16 @@ No implicit state changes exist.
 Roles are implemented using **Django Groups**.
 
 | Role     | Capabilities                                            |
-| -------- | ------------------------------------------------------- |
+|----------|---------------------------------------------------------|
 | Employee | Create, edit (draft), submit documents                  |
 | Manager  | All Employee actions + approve/reject others’ documents |
 | Admin    | All Manager actions + system-wide audit visibility      |
 
 ### Important Rules
 
-* **Admins are approvers**, not automatic approvers
-* **No role can approve its own documents**
-* Superusers bypass group checks but are still blocked from self-approval
+- **Admins are approvers**, not automatic approvers.
+- **No role can approve its own documents**.
+- Superusers bypass group checks but are still blocked from self-approval.
 
 ---
 
@@ -70,119 +70,83 @@ class GroupRequiredMixin(UserPassesTestMixin):
 
 Used to define:
 
-* `EmployeeRequiredMixin`
-* `ManagerRequiredMixin`
-* `AdminRequiredMixin`
-* `ApproverRequiredMixin`
+- `EmployeeRequiredMixin`
+- `ManagerRequiredMixin`
+- `AdminRequiredMixin`
+- `ApproverRequiredMixin`
 
 #### ApproverRequiredMixin
 
 Allows access to approval actions for:
 
-* Managers
-* Admins
+- Managers
+- Admins
 
 Self-approval is **explicitly forbidden at the view level**, not in the mixin.
-
----
 
 ### 4.2 Separation of Duties (Defense-in-Depth)
 
 Self-approval prevention is enforced in **two layers**:
 
-1. **Queryset filtering**
+1. **Queryset filtering**  
 
 ```python
-.exclude(created_by=self.request.user)
+    .exclude(created_by=self.request.user)
 ```
 
-1. **Transactional check**
+1. **Transactional check**  
 
 ```python
-if document.created_by_id == request.user.id:
-    raise Http404
+   if document.created_by_id == request.user.id:
+       raise Http404
 ```
 
 This ensures:
 
-* UI bypasses are ineffective
-* Concurrent approval attempts are safe
-* Integrity is preserved under race conditions
+- UI bypasses are ineffective
+- Concurrent approval attempts are safe
+- Integrity is preserved under race conditions
 
----
-
-> #### Authorization & Error Semantics
->
-> * Authorization failures (role violations, self-approval) raise `PermissionDenied` (403)
-> * Resource absence raises `Http404`
-> * Views enforce authorization; templates remain passive
-> * Tests assert HTTP semantics explicitly
-
----
-
-#### Error Semantics & Visibility Guarantees
+### 4.3 Authorization & Error Semantics
 
 The system enforces strict separation between:
 
-1. Visibility (existence disclosure)
-2. Authorization (permission to act)
-3. Workflow validity (state machine correctness)
+- **Visibility (404)** – A user must not be able to infer the existence of documents outside their permitted boundary.
+  - Employees may only see their own documents.
+  - Managers and Admins may see all documents.
+  - Unauthorized visibility attempts return 404.
 
-##### Visibility (404)
+- **Authorization (403)** – If a user can see a document but is not permitted to perform a specific action (e.g., self-approval), the system returns 403.
 
-A user must not be able to infer the existence of documents
-outside their permitted visibility boundary.
+- **Workflow Invalid State (400)** – If an authorized user attempts a state transition that is not allowed by the pure state machine, the system returns 400.
 
-* Employees may only see their own documents.
-* Managers and Admins may see all documents.
-* Unauthorized visibility attempts return 404.
+**Invariant:** View-layer logic must enforce visibility before invoking `DocumentWorkflowService`. The service layer remains the single mutation authority.
 
-##### Authorization (403)
+### 4.4 Data Integrity Guarantees
 
-If a user can see a document but is not permitted to perform
-a specific action (e.g., self-approval), the system returns 403.
+Database-level constraints mirror workflow invariants:
 
-##### Workflow Invalid State (400)
+- Document status validity (`CHECK` constraint)
+- Single approval decision per document (`UNIQUE` constraint on `ApprovalStep.document`)
+- Approval steps restricted to terminal states (`CHECK` constraint on `status` in `APPROVED`/`REJECTED`)
 
-If an authorized user attempts a state transition that is
-not allowed by the pure state machine, the system returns 400.
+### 4.5 Concurrency & Idempotency Guarantees
 
-##### Invariant
+- Workflow transitions are idempotent by design.
+- Replayed transitions are rejected explicitly and produce no side effects.
+- `select_for_update()` within a transaction ensures atomic decisions.
 
-View-layer logic must enforce visibility before invoking
-DocumentWorkflowService.
+### 4.6 State Machine Guarantees
 
-The service layer remains the single mutation authority.
+The state machine exposes a frozen `TransitionResult` contract:
 
----
-
-### 4.3 Data Integrity Guarantees
-
-#### Database-level constraints mirror workflow invariants
-
-> * Document status validity
-> * Single approval decision per document
-> * Approval steps restricted to terminal states
+- Pure evaluation only
+- Explicit success/failure separation
+- Stable, user-facing failure reasons
+- No mutation or I/O
+- On success, `reason` is `None`; on failure, `reason` is a stable explanation.
 
 ---
-
-### 4.4 Concurrency & Idempotency Guarantees
-
-* Workflow transitions are idempotent by design.
-* Replayed transitions are rejected explicitly and produce no side effects.
-
----
-
-### 4.5 State Machine Guarantees
-
-#### The state machine exposes a frozen TransitionResult contract
-
-> * Pure evaluation only
-> * Explicit success/failure separation
-> * Stable, user-facing failure reasons
-> * No mutation or I/O
-> * On successful transitions, reason is None
-> * On rejected transitions, reason is a stable, user-facing explanatio
 
 ## 5. Approval Workflow Design
 
@@ -190,16 +154,16 @@ The service layer remains the single mutation authority.
 
 There is **one approval queue** shared by Managers and Admins.
 
-* Located at: `/documents/approvals/`
-* Backed by `ApprovalQueueListView`
-* Lists only `SUBMITTED` documents
-* Excludes documents created by the current user
+- Located at: `/documents/approvals/`
+- Backed by `ApprovalQueueListView`
+- Lists only `SUBMITTED` documents
+- Excludes documents created by the current user
 
 This avoids:
 
-* Role fragmentation
-* Approval deadlocks
-* Manager/Admin duplication
+- Role fragmentation
+- Approval deadlocks
+- Manager/Admin duplication
 
 ---
 
@@ -209,14 +173,14 @@ All approval decisions are wrapped in **database transactions**:
 
 ```python
 with transaction.atomic():
-    Document.objects.select_for_update()
+    Document.objects.select_for_update().get(pk=document_id)
 ```
 
 This guarantees:
 
-* No double approvals
-* No lost updates
-* Correct audit ordering
+- No double approvals
+- No lost updates
+- Correct audit ordering
 
 ---
 
@@ -224,41 +188,33 @@ This guarantees:
 
 ### Audit Logging Strategy
 
-* Authorization-bound actions (approve/reject) log audits at the view/service layer
-* Model signals may be used for creation-time logging only
-* Signals must never enforce permissions or workflow rules
+- All workflow mutations (submit, approve, reject) are logged **exclusively** via `DocumentWorkflowService`.
+- Document creation also logs an audit entry in the view (`DocumentCreateView`).
+- Model signals are **only** used for post-migration group creation; they never enforce permissions or workflow rules.
 
 ### Audit Trail Principles
 
-Every significant action:
+Every significant action produces an immutable audit log entry recording:
 
-* Submission
-* Approval
-* Rejection
-
-Produces an immutable audit log entry.
-
-Audit logs record:
-
-* Timestamp
-* Action
-* Actor
-* Target document
-* Optional metadata
+- Timestamp
+- Action
+- Actor
+- Target document
+- Optional metadata
 
 ### Audit Visibility
 
-| View                   | Access |
-| ---------------------- | ------ |
-| Per-document audit     | Admin  |
-| System-wide audit list | Admin  |
+| View                         | Access               |
+|------------------------------|----------------------|
+| Per-document audit trail     | Admin only           |
+| System-wide audit log list   | Admin only           |
 
 Audit data is **read-only** and cannot be altered via the UI.
 
-### Audit & UX
+### Audit Presentation
 
-* Audit action labels rendered via `get_action_display`
-* Templates intentionally contain no audit/action conditionals
+- Audit action labels rendered via `get_action_display` in templates.
+- Templates contain no conditional logic for audit actions.
 
 ---
 
@@ -266,25 +222,22 @@ Audit data is **read-only** and cannot be altered via the UI.
 
 ### Role Awareness
 
-Templates do **not** query the database.
-
-Instead, role flags are injected via a **single context processor**:
+Templates do **not** query the database. Instead, role flags are injected via a **single context processor**:
 
 ```python
-role_flags(request)
+def role_flags(request):
+    # Returns is_employee, is_manager, is_admin
 ```
-
-Provides:
-
-* `is_employee`
-* `is_manager`
-* `is_admin`
 
 This ensures:
 
-* Consistent role logic
-* Zero ORM usage in templates
-* Predictable UI behavior
+- Consistent role logic
+- Zero ORM usage in templates
+- Predictable UI behavior
+
+### Rich Text Editing
+
+The system uses `django_summernote` for WYSIWYG editing of document content. The `DocumentForm` configures the Summernote widget with a custom toolbar.
 
 ---
 
@@ -292,110 +245,99 @@ This ensures:
 
 Views are grouped by responsibility:
 
-| Area                     | Responsibility     |
-| ------------------------ | ------------------ |
-| document_list            | Personal documents |
-| document_create / update | Authoring          |
-| document_submit          | State transition   |
-| document_decision        | Approval decisions |
-| document_review_list     | Approval queue     |
-| document_audit           | Audit visibility   |
+| Area                         | Responsibility     |
+|------------------------------|--------------------|
+| `document_list`              | Personal documents |
+| `document_create` / `update` | Authoring          |
+| `document_submit`            | State transition   |
+| `document_decision`          | Approval decisions |
+| `document_review_list`       | Approval queue     |
+| `document_audit`             | Audit visibility   |
 
 URLs are:
 
-* Explicit
-* Namespaced
-* Non-overlapping
+- Explicit
+- Namespaced (`workflow` and `reports`)
+- Non-overlapping
 
-No legacy Manager-only approval paths remain.
+### Reports App
+
+The `reports` app contains admin-only audit views:
+
+- `AuditLogListView` – system-wide audit log with filtering
+- `DocumentAuditLogView` – per-document audit trail
 
 ---
 
-## 10. Security Posture Summary
+## 10. Observability Layer
+
+The system includes a passive observability adapter inside the service layer. This layer:
+
+- Emits structured logs
+- Emits transition metrics
+- Emits failure diagnostics
+- Does **not** modify workflow behavior
+- Does **not** participate in transactions
+- Must never raise or swallow business exceptions
+
+### Structured Logging
+
+- Logs are formatted as JSON using a custom `JsonFormatter`.
+- A `CorrelationIdMiddleware` injects a correlation ID into each request, which is included in all log records.
+- Logging occurs at transition attempt, success, and controlled failure paths.
+
+### Metrics
+
+An in-process metrics collector (`WorkflowMetrics`) tracks:
+
+- `workflow.transition.success` (counter)
+- `workflow.transition.failure` (counter)
+- `workflow.transition.latency_ms` (histogram)
+
+Metrics are exposed via a staff-only endpoint at `/observability/metrics/` (JSON snapshot).
+
+---
+
+## 11. Security Posture Summary
 
 The system enforces security through:
 
-* Explicit permissions (no implicit trust)
-* Defense-in-depth checks
-* Transactional integrity
-* Audit-first design
-* No client-side authority assumptions
+- Explicit permissions (no implicit trust)
+- Defense-in-depth checks
+- Transactional integrity
+- Audit-first design
+- No client-side authority assumptions
 
 This architecture intentionally favors **clarity and correctness over convenience**.
 
 ---
 
-## 11. Architecture Status
-
-### Phase 4 Architecture: FROZEN
-
-* Core behavior finalized
-* No further structural changes planned
-* Future phases may add reporting or analytics **without altering core workflow**
-
-### User Feedback & Messaging
-
-* Messages framework used for success only
-* Authorization failures handled exclusively by 403/404
-* No business rules exposed in UI feedback
-
-### Audit Log Presentation & Visibility
-
-* Raw audit data preserved
-* Presentation varies by context (global vs document)
-* Admins have full visibility; others scoped
-* UX does not alter enforcement
-
 ## 12. Workflow Mutation Authority
 
-All document lifecycle transitions (submit, approve, reject) are executed
-exclusively via `DocumentWorkflowService`.
+All document lifecycle transitions (submit, approve, reject) are executed **exclusively** via `DocumentWorkflowService`.
 
-Models, views, and signals are prohibited from mutating `Document.status`,
-creating `ApprovalStep`, or writing workflow-related `AuditLog` entries
-directly.
+Models, views, and signals are prohibited from mutating `Document.status`, creating `ApprovalStep`, or writing workflow-related `AuditLog` entries directly.
 
 This guarantees:
 
-* Exactly-once audit logging
-* Centralized permission enforcement
-* Transactional integrity
+- Exactly-once audit logging
+- Centralized permission enforcement
+- Transactional integrity
 
-## 13. Observability Layer
+---
 
-The system includes a passive observability adapter inside the service layer.
-This layer:
+## 13. Architecture Status
 
-* Emits structured logs
-* Emits transition metrics
-* Emits failure diagnostics
-* Does NOT modify workflow behavior
-* Does NOT participate in transactions
-* Must never raise or swallow business exceptions
+### Phase 4 Architecture: FROZEN
 
-### Structured Logging
+- Core behavior finalized
+- No further structural changes planned
+- Future phases may add reporting or analytics **without altering core workflow**
 
-* The system emits structured transition logs via workflow.observability.
-* Logging is passive and isolated from workflow execution.
-* It must never raise or influence business logic.
+### User Feedback & Messaging
 
-#### Instrumentation is embedded inside DocumentWorkflowService.perform()
+- Messages framework used for success only
+- Authorization failures handled exclusively by 403/404
+- No business rules exposed in UI feedback
 
-Logging occurs:
-
-* At transition attempt
-* On transition success
-* On controlled failure paths
-
-No transactional or behavioral changes were introduced.
-
-### Metrics Adapter
-
-An in-process metrics collector has been introduced.
-Metrics include:
-
-* workflow.transition.success
-* workflow.transition.failure
-* workflow.transition.latency_ms
-
-Metrics are side-effect only and do not influence workflow logic.
+---

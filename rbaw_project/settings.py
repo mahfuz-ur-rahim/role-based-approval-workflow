@@ -46,6 +46,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "workflow.middleware.CorrelationIdMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -139,36 +140,26 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "structured": {
-            "()": "logging.Formatter",
-            "format": (
-                "%(asctime)s %(levelname)s %(name)s %(message)s "
-                "actor=%(actor_id)s "
-                "document=%(document_id)s "
-                "action=%(action)s "
-                "allowed=%(allowed)s "
-                "failure=%(failure)s "
-                "latency_ms=%(latency_ms)s"
-            ),
-            "defaults": {
-                "actor_id": None,
-                "document_id": None,
-                "action": None,
-                "allowed": None,
-                "failure": None,
-                "latency_ms": None,
-            },
+        "json": {
+            "()": "workflow.logging.JsonFormatter",
         },
     },
     "handlers": {
-        "console_structured": {
+        "console_json": {
             "class": "logging.StreamHandler",
-            "formatter": "structured",
+            "formatter": "json",
         },
     },
     "loggers": {
+        # Observability logs
         "workflow.observability": {
-            "handlers": ["console_structured"],
+            "handlers": ["console_json"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # (Optional) future-proof entire workflow package
+        "workflow": {
+            "handlers": ["console_json"],
             "level": "INFO",
             "propagate": False,
         },

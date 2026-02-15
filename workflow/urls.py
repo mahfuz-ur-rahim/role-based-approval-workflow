@@ -9,7 +9,7 @@ from workflow.views import ApprovalQueueListView
 from workflow.views import DocumentApproveView
 from workflow.views import DocumentRejectView
 from workflow.views import DocumentAuditLogView
-
+from workflow.views import workflow_metrics_view
 
 app_name = "workflow"
 
@@ -63,5 +63,10 @@ urlpatterns = [
         "documents/<int:pk>/audit/",
         DocumentAuditLogView.as_view(),
         name="document-audit-log",
+    ),
+    path(
+        "observability/metrics/",
+        workflow_metrics_view,
+        name="workflow_metrics",
     ),
 ]
