@@ -134,3 +134,29 @@ LOGIN_REDIRECT_URL = "workflow:document-list"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "structured": {
+            "format": "%(asctime)s %(levelname)s %(name)s %(message)s "
+                      "actor=%(actor_id)s document=%(document_id)s "
+                      "action=%(action)s allowed=%(allowed)s "
+                      "failure=%(failure)s latency_ms=%(latency_ms)s",
+        },
+    },
+    "handlers": {
+        "console_structured": {
+            "class": "logging.StreamHandler",
+            "formatter": "structured",
+        },
+    },
+    "loggers": {
+        "workflow.observability": {
+            "handlers": ["console_structured"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}

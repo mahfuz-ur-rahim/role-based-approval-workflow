@@ -372,3 +372,9 @@ This layer:
 * Does NOT modify workflow behavior
 * Does NOT participate in transactions
 * Must never raise or swallow business exceptions
+
+### Structured Logging
+
+* The system emits structured transition logs via workflow.observability.
+* Logging is passive and isolated from workflow execution.
+* It must never raise or influence business logic.
