@@ -388,3 +388,14 @@ Logging occurs:
 * On controlled failure paths
 
 No transactional or behavioral changes were introduced.
+
+### Metrics Adapter
+
+An in-process metrics collector has been introduced.
+Metrics include:
+
+* workflow.transition.success
+* workflow.transition.failure
+* workflow.transition.latency_ms
+
+Metrics are side-effect only and do not influence workflow logic.

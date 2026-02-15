@@ -10,6 +10,7 @@ from django.apps import apps
 from django.db import transaction
 import time
 from workflow.observability import WorkflowEventLogger
+from workflow.metrics import WorkflowMetrics
 
 
 class WorkflowError(Exception):
@@ -78,6 +79,12 @@ class DocumentWorkflowService:
                     latency_ms=latency_ms,
                 )
 
+                WorkflowMetrics.increment("workflow.transition.failure")
+                WorkflowMetrics.record_latency(
+                    "workflow.transition.latency_ms",
+                    latency_ms,
+                )
+
                 if result.failure == TransitionFailure.PERMISSION:
                     raise PermissionViolationError(result.reason)
                 raise InvalidTransitionError(result.reason)
@@ -92,6 +99,12 @@ class DocumentWorkflowService:
                     allowed=False,
                     failure="IDEMPOTENT_REPLAY",
                     latency_ms=latency_ms,
+                )
+
+                WorkflowMetrics.increment("workflow.transition.failure")
+                WorkflowMetrics.record_latency(
+                    "workflow.transition.latency_ms",
+                    latency_ms,
                 )
 
                 raise InvalidTransitionError(
@@ -131,6 +144,11 @@ class DocumentWorkflowService:
                 allowed=True,
                 failure=None,
                 latency_ms=latency_ms,
+            )
+            WorkflowMetrics.increment("workflow.transition.success")
+            WorkflowMetrics.record_latency(
+                "workflow.transition.latency_ms",
+                latency_ms,
             )
 
             return document
