@@ -4,7 +4,6 @@ from workflow.state_machine import (
     WorkflowAction,
     ActorContext,
     TransitionFailure,
-    evaluate_transition,
 )
 from workflow.execution.context import WorkflowExecutionContext
 
@@ -15,6 +14,7 @@ import time
 from workflow.observability import WorkflowEventLogger
 from workflow.metrics import WorkflowMetrics
 from workflow.execution.command import WorkflowCommand
+from workflow.engine.engine import WorkflowEngine
 
 
 class WorkflowError(Exception):
@@ -112,17 +112,17 @@ class DocumentWorkflowService:
                 execution_context=execution_context,
             )
 
-            result = evaluate_transition(
+            decision = WorkflowEngine.decide(
                 current_status=DocumentStatus(document.status),  # type: ignore
                 action=action,
-                actor=actor_ctx,
+                actor_context=actor_ctx,
             )
 
             # -------------------------------------------------
             # FAILURE PATH
             # -------------------------------------------------
 
-            if not result.allowed:
+            if not decision.allowed:
                 latency_ms = (time.monotonic() - start_time) * 1000
 
                 WorkflowEventLogger.log_transition_result(
@@ -130,7 +130,7 @@ class DocumentWorkflowService:
                     document_id=document.id,  # type: ignore
                     action=action.name,
                     allowed=False,
-                    failure=result.failure.name if result.failure else "UNKNOWN",
+                    failure=decision.failure.name if decision.failure else "UNKNOWN",
                     latency_ms=latency_ms,
                 )
 
@@ -140,16 +140,16 @@ class DocumentWorkflowService:
                     latency_ms,
                 )
 
-                if result.failure == TransitionFailure.PERMISSION:
-                    raise PermissionViolationError(result.reason)
+                if decision.failure == TransitionFailure.PERMISSION:
+                    raise PermissionViolationError(decision.reason)
 
-                raise InvalidTransitionError(result.reason)
+                raise InvalidTransitionError(decision.reason)
 
             # -------------------------------------------------
             # IDEMPOTENT REPLAY PROTECTION
             # -------------------------------------------------
 
-            if result.next_status.value == document.status:  # type: ignore
+            if decision.next_status.value == document.status:  # type: ignore
                 latency_ms = (time.monotonic() - start_time) * 1000
 
                 WorkflowEventLogger.log_transition_result(
@@ -175,7 +175,7 @@ class DocumentWorkflowService:
             # APPLY MUTATION
             # -------------------------------------------------
 
-            document.status = result.next_status.value  # type: ignore
+            document.status = decision.next_status.value  # type: ignore
             document.save(update_fields=["status", "updated_at"])
 
             # -------------------------------------------------

@@ -325,3 +325,12 @@ This guarantees:
 - Transactional integrity
 
 ---
+
+## 13. Domain Layer
+
+The `WorkflowEngine` is a pure domain component that:
+
+- Accepts `WorkflowCommand`
+- Uses `ExecutionContext`
+- Returns `WorkflowDecision`
+- Has no ORM or infrastructure dependencies
