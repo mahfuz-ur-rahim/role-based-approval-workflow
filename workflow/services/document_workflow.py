@@ -8,7 +8,6 @@ from workflow.state_machine import (
 from workflow.execution.context import WorkflowExecutionContext
 
 from django.apps import apps
-from django.db import transaction
 import time
 
 from workflow.observability import WorkflowEventLogger
@@ -20,6 +19,7 @@ from workflow.execution.effects import (
     CreateApprovalStep,
     CreateAuditLog,
 )
+from workflow.engine.sqlite_engine import SQLiteExecutionEngine
 
 
 class WorkflowError(Exception):
@@ -39,9 +39,10 @@ class DocumentWorkflowService:
     Single authority for document state mutations.
     """
 
-    def __init__(self, *, actor):
-        # Public contract unchanged
+    def __init__(self, *, actor, engine=None):
+        # Backward compatible
         self.actor = actor
+        self.engine = engine or SQLiteExecutionEngine()
 
     # -------------------------------------------------
     # Public API (UNCHANGED)
@@ -98,12 +99,9 @@ class DocumentWorkflowService:
         ApprovalStep = apps.get_model("workflow", "ApprovalStep")
         AuditLog = apps.get_model("workflow", "AuditLog")
 
-        with transaction.atomic():
-            document = (
-                Document.objects
-                .select_for_update()
-                .get(pk=document_id)
-            )
+        def _execute():
+
+            document = self.engine.load_document(document_id)
 
             start_time = WorkflowEventLogger.log_transition_attempt(
                 actor_id=execution_context.actor_id,
@@ -123,10 +121,7 @@ class DocumentWorkflowService:
                 actor_context=actor_ctx,
             )
 
-            # -------------------------------------------------
-            # FAILURE PATH
-            # -------------------------------------------------
-
+            # FAILURE
             if not decision.allowed:
                 latency_ms = (time.monotonic() - start_time) * 1000
 
@@ -150,10 +145,7 @@ class DocumentWorkflowService:
 
                 raise InvalidTransitionError(decision.reason)
 
-            # -------------------------------------------------
-            # IDEMPOTENT REPLAY PROTECTION
-            # -------------------------------------------------
-
+            # IDEMPOTENT
             if decision.next_status.value == document.status:  # type: ignore
                 latency_ms = (time.monotonic() - start_time) * 1000
 
@@ -176,22 +168,15 @@ class DocumentWorkflowService:
                     "Idempotent replay: transition already applied"
                 )
 
-            # -------------------------------------------------
-            # APPLY DECLARATIVE EFFECTS
-            # -------------------------------------------------
-
+            # APPLY EFFECTS
             for effect in decision.effects:
-                self._apply_effect(  # type: ignore
+                self._apply_effect(
                     effect=effect,
                     document=document,
                     execution_context=execution_context,
                     ApprovalStep=ApprovalStep,
                     AuditLog=AuditLog,
                 )
-
-            # -------------------------------------------------
-            # SUCCESS LOGGING + METRICS
-            # -------------------------------------------------
 
             latency_ms = (time.monotonic() - start_time) * 1000
 
@@ -211,6 +196,8 @@ class DocumentWorkflowService:
             )
 
             return document
+
+        return self.engine.run(_execute)
 
     def _apply_effect(
         self,
