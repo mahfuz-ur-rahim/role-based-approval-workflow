@@ -1,17 +1,20 @@
 from django.db import transaction
-from workflow.models import Document
+from django.apps import apps
 from .base import WorkflowExecutionEngine
 
 
 class SQLiteExecutionEngine(WorkflowExecutionEngine):
 
-    def run_in_transaction(self, func, *args, **kwargs):
+    def run(self, func):
         with transaction.atomic():
-            return func(*args, **kwargs)
+            return func()
 
-    def load_document_for_update(self, document_id):
-        # SQLite has no row-level locking
-        # We rely on atomic block only
-        return Document.objects.select_for_update(
-            nowait=False
-        ).get(id=document_id)
+    def load_document(self, document_id: int):
+        Document = apps.get_model("workflow", "Document")
+
+        # SQLite ignores row locks but keeps API uniform
+        return (
+            Document.objects
+            .select_for_update()
+            .get(pk=document_id)
+        )
