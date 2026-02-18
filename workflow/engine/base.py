@@ -1,17 +1,17 @@
 from abc import ABC, abstractmethod
-from django.db import transaction
 
 
 class WorkflowExecutionEngine(ABC):
     """
-    Defines transactional + locking contract
-    for workflow state transitions.
+    Responsible for:
+    - Transaction boundary
+    - Aggregate loading with locking semantics
     """
 
     @abstractmethod
-    def run_in_transaction(self, func, *args, **kwargs):
+    def run(self, func):
         pass
 
     @abstractmethod
-    def load_document_for_update(self, document_id):
+    def load_document(self, document_id: int):
         pass
