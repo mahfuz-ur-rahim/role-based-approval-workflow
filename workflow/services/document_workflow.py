@@ -15,6 +15,11 @@ from workflow.observability import WorkflowEventLogger
 from workflow.metrics import WorkflowMetrics
 from workflow.execution.command import WorkflowCommand
 from workflow.engine.engine import WorkflowEngine
+from workflow.execution.effects import (
+    UpdateDocumentStatus,
+    CreateApprovalStep,
+    CreateAuditLog,
+)
 
 
 class WorkflowError(Exception):
@@ -172,37 +177,17 @@ class DocumentWorkflowService:
                 )
 
             # -------------------------------------------------
-            # APPLY MUTATION
+            # APPLY DECLARATIVE EFFECTS
             # -------------------------------------------------
 
-            document.status = decision.next_status.value  # type: ignore
-            document.save(update_fields=["status", "updated_at"])
-
-            # -------------------------------------------------
-            # APPROVAL STEP
-            # -------------------------------------------------
-
-            if action in (WorkflowAction.APPROVE, WorkflowAction.REJECT):
-                ApprovalStep.objects.create(
+            for effect in decision.effects:
+                self._apply_effect(  # type: ignore
+                    effect=effect,
                     document=document,
-                    decided_by_id=execution_context.actor_id,
-                    status=document.status,  # type: ignore
+                    execution_context=execution_context,
+                    ApprovalStep=ApprovalStep,
+                    AuditLog=AuditLog,
                 )
-
-            # -------------------------------------------------
-            # AUDIT LOG (EXACTLY ONE)
-            # -------------------------------------------------
-
-            AuditLog.log(  # type: ignore
-                action={
-                    WorkflowAction.SUBMIT: AuditAction.DOCUMENT_SUBMITTED,
-                    WorkflowAction.APPROVE: AuditAction.DOCUMENT_APPROVED,
-                    WorkflowAction.REJECT: AuditAction.DOCUMENT_REJECTED,
-                }[action],
-                actor=self.actor,  # ← restore original contract
-                document=document,
-                metadata={"document_id": document.id},  # type: ignore
-            )
 
             # -------------------------------------------------
             # SUCCESS LOGGING + METRICS
@@ -226,3 +211,36 @@ class DocumentWorkflowService:
             )
 
             return document
+
+    def _apply_effect(
+        self,
+        *,
+        effect,
+        document,
+        execution_context,
+        ApprovalStep,
+        AuditLog,
+    ):
+        """
+        Executes a single domain effect.
+        This is the only place where side effects occur.
+        """
+
+        if isinstance(effect, UpdateDocumentStatus):
+            document.status = effect.new_status
+            document.save(update_fields=["status", "updated_at"])
+
+        elif isinstance(effect, CreateApprovalStep):
+            ApprovalStep.objects.create(
+                document=document,
+                decided_by_id=execution_context.actor_id,
+                status=effect.status,
+            )
+
+        elif isinstance(effect, CreateAuditLog):
+            AuditLog.log(
+                action=effect.action,
+                actor=self.actor,
+                document=document,
+                metadata={"document_id": document.id},
+            )
