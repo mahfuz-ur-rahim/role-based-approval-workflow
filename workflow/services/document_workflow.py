@@ -87,26 +87,19 @@ class DocumentWorkflowService:
         )
 
     def _handle_command(self, command: WorkflowCommand):
-        """
-        Internal execution boundary.
-        All mutation logic lives here.
-        """
-        document_id = command.aggregate_id
+
         action = command.action
         execution_context = command.execution_context
 
-        Document = apps.get_model("workflow", "Document")
-        ApprovalStep = apps.get_model("workflow", "ApprovalStep")
-        AuditLog = apps.get_model("workflow", "AuditLog")
+        def _execute(*, document, models):
 
-        def _execute():
-
-            document = self.engine.load_document(document_id)
+            ApprovalStep = models["ApprovalStep"]
+            AuditLog = models["AuditLog"]
 
             start_time = WorkflowEventLogger.log_transition_attempt(
                 actor_id=execution_context.actor_id,
-                document_id=document.id,  # type: ignore
-                current_status=document.status,  # type: ignore
+                document_id=document.id,
+                current_status=document.status,
                 action=action.name,
             )
 
@@ -116,7 +109,7 @@ class DocumentWorkflowService:
             )
 
             decision = WorkflowEngine.decide(
-                current_status=DocumentStatus(document.status),  # type: ignore
+                current_status=DocumentStatus(document.status),
                 action=action,
                 actor_context=actor_ctx,
             )
@@ -127,7 +120,7 @@ class DocumentWorkflowService:
 
                 WorkflowEventLogger.log_transition_result(
                     actor_id=execution_context.actor_id,
-                    document_id=document.id,  # type: ignore
+                    document_id=document.id,
                     action=action.name,
                     allowed=False,
                     failure=decision.failure.name if decision.failure else "UNKNOWN",
@@ -151,7 +144,7 @@ class DocumentWorkflowService:
 
                 WorkflowEventLogger.log_transition_result(
                     actor_id=execution_context.actor_id,
-                    document_id=document.id,  # type: ignore
+                    document_id=document.id,
                     action=action.name,
                     allowed=False,
                     failure="IDEMPOTENT_REPLAY",
@@ -182,7 +175,7 @@ class DocumentWorkflowService:
 
             WorkflowEventLogger.log_transition_result(
                 actor_id=execution_context.actor_id,
-                document_id=document.id,  # type: ignore
+                document_id=document.id,
                 action=action.name,
                 allowed=True,
                 failure=None,
@@ -197,7 +190,10 @@ class DocumentWorkflowService:
 
             return document
 
-        return self.engine.run(_execute)
+        return self.engine.execute(
+            command=command,
+            handler=_execute,
+        )
 
     def _apply_effect(
         self,
