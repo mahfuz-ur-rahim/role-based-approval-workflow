@@ -15,3 +15,4 @@ class WorkflowCommand:
     aggregate_id: int
     action: WorkflowAction
     execution_context: WorkflowExecutionContext
+    idempotency_key: str

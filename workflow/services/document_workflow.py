@@ -20,6 +20,7 @@ from workflow.execution.effects import (
     CreateAuditLog,
 )
 from workflow.engine.sqlite_engine import SQLiteExecutionEngine
+import uuid
 
 
 class WorkflowError(Exception):
@@ -64,6 +65,7 @@ class DocumentWorkflowService:
             aggregate_id=document_id,
             action=action,
             execution_context=execution_context,
+            idempotency_key=str(uuid.uuid4()),
         )
 
         return self._handle_command(command)
