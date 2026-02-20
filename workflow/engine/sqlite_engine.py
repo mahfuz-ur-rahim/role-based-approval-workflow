@@ -9,6 +9,9 @@ class EngineExecutionError(Exception):
 
 class SQLiteExecutionEngine(WorkflowExecutionEngine):
 
+    def __init__(self, hook=None):
+        self.hook = hook
+
     def run(self, *, command, handler):
         return self.execute(command=command, handler=handler)
 
@@ -20,13 +23,20 @@ class SQLiteExecutionEngine(WorkflowExecutionEngine):
 
         try:
             with transaction.atomic():
+
+                if self.hook:
+                    self.hook.before_lock(command)
+
                 document = (
                     Document.objects
                     .select_for_update()
                     .get(pk=command.aggregate_id)
                 )
 
-                return handler(
+                if self.hook:
+                    self.hook.after_lock(document)
+
+                result = handler(
                     document=document,
                     models={
                         "ApprovalStep": ApprovalStep,
@@ -34,8 +44,12 @@ class SQLiteExecutionEngine(WorkflowExecutionEngine):
                     },
                 )
 
+                if self.hook:
+                    self.hook.before_commit(document)
+
+                return result
+
         except DatabaseError as e:
-            # Only wrap infrastructure/database failures
             raise EngineExecutionError(
                 f"Database failure during workflow execution: {str(e)}"
             ) from e
