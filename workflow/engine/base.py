@@ -1,17 +1,14 @@
 from abc import ABC, abstractmethod
 
 
-class WorkflowExecutionEngine(ABC):
+class WorkflowExecutionEngine:
     """
-    Responsible for:
+    Abstract execution engine contract.
+    Owns:
     - Transaction boundary
-    - Aggregate loading with locking semantics
+    - Aggregate loading
+    - Locking strategy
     """
 
-    @abstractmethod
-    def run(self, func):
-        pass
-
-    @abstractmethod
-    def load_document(self, document_id: int):
-        pass
+    def execute(self, *, command, handler):
+        raise NotImplementedError

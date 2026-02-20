@@ -335,8 +335,34 @@ The `WorkflowEngine` is a pure domain component that:
 - Returns `WorkflowDecision`
 - Has no ORM or infrastructure dependencies
 
+---
+
 ## Database Engine
 
 Development and production use PostgreSQL.
 Concurrency safety depends on row-level locking via SELECT ... FOR UPDATE.
 SQLite is no longer supported for concurrency validation.
+
+---
+
+## Execution Engine Contract (Normalized)
+
+ExecutionEngine exposes a single method:
+    execute(command, handler)
+
+Responsibilities:
+
+- Open transaction
+- Lock aggregate
+- Load persistence models
+- Invoke domain handler
+
+Service layer no longer:
+
+- Opens transactions
+- Loads aggregates
+- Controls locking
+
+This isolates infrastructure concerns from domain orchestration.
+
+---
