@@ -59,11 +59,15 @@ A Django-based document approval system implementing a role-driven state machine
 
 6. Create a superuser
 
+```bash
    python manage.py createsuperuser
+```
 
 7. Run the development server
 
+```bash
    python manage.py runserver
+```
 
 8. Visit:
 
