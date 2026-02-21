@@ -53,7 +53,9 @@ A Django-based document approval system implementing a role-driven state machine
 
 5. Run migrations
 
+```bash
    python manage.py migrate
+```
 
    The app registers a post-migrate signal to create default groups (`Employee`, `Manager`, `Admin`) automatically (see [`workflow.signals.create_default_groups`](workflow/signals.py)).
 
