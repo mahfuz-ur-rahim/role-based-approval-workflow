@@ -1,368 +1,408 @@
-# Architecture Overview
+# Architecture.md
 
-## Role-Based Document Approval Workflow System
-
-## 1. Architectural Goals
-
-This system is designed to demonstrate a **secure, auditable, role-based approval workflow** with explicit enforcement of separation of duties. The architecture prioritizes:
-
-- Clear responsibility boundaries between roles
-- Explicit workflow state transitions
-- Auditability of all sensitive actions
-- Defense-in-depth (UI, view, and data-layer checks)
-- Educational clarity over framework “magic”
+**Project:** RBAW – Document Approval System
+**Stack:** Django 5.2 · Python 3.11 · PostgreSQL
+**Architecture Style:** Layered Clean Architecture with Explicit Domain Boundaries
 
 ---
 
-## 2. Core Domain Model
+## 1. Architectural Overview
 
-### Document Lifecycle
+This system implements a **role-based document approval workflow** with deterministic concurrency control, structured observability, and strict permission boundaries.
 
-Documents move through a **strict, linear lifecycle**:
+The architecture follows a **Clean / Hexagonal-inspired layered model**, structured as:
 
 ```txt
-DRAFT → SUBMITTED → APPROVED / REJECTED
+Presentation Layer (Django Views + Templates)
+        ↓
+Application Layer (Workflow Service / Use Cases)
+        ↓
+Domain Layer (Entities + State Transitions)
+        ↓
+Infrastructure Layer (ORM, Logging, Middleware, DB)
 ```
 
-Transitions are:
+The core design principle:
 
-- Explicit
-- Atomic
-- Audited
-- Permission-checked
-
-No implicit state changes exist.
+> The Domain layer owns business rules.
+> The Application layer orchestrates use cases.
+> The Presentation layer handles HTTP concerns only.
+> Infrastructure supports but does not dictate behavior.
 
 ---
 
-## 3. Roles and Responsibilities
+## 2. High-Level System Diagram
 
-Roles are implemented using **Django Groups**.
-
-| Role     | Capabilities                                            |
-|----------|---------------------------------------------------------|
-| Employee | Create, edit (draft), submit documents                  |
-| Manager  | All Employee actions + approve/reject others’ documents |
-| Admin    | All Manager actions + system-wide audit visibility      |
-
-### Important Rules
-
-- **Admins are approvers**, not automatic approvers.
-- **No role can approve its own documents**.
-- Superusers bypass group checks but are still blocked from self-approval.
-
----
-
-## 4. Permission Architecture
-
-### 4.1 View-Level Enforcement (Primary)
-
-Permissions are enforced using **explicit mixins**, not decorators or template logic.
-
-#### GroupRequiredMixin
-
-Base mixin for group-based access control.
-
-```python
-class GroupRequiredMixin(UserPassesTestMixin):
-    required_groups: list[str]
+```txt
+┌─────────────────────────────┐
+│        Client (Browser)     │
+└──────────────┬──────────────┘
+               │ HTTP
+┌──────────────▼──────────────┐
+│     Django View Layer       │
+│  (CBVs + Permission Mixins) │
+└──────────────┬──────────────┘
+               │ Calls
+┌──────────────▼──────────────┐
+│  Application / Workflow     │
+│  (Document methods / svc)   │
+└──────────────┬──────────────┘
+               │ Mutates
+┌──────────────▼──────────────┐
+│       Domain Entities       │
+│  Document / ApprovalStep    │
+└──────────────┬──────────────┘
+               │ Persists via ORM
+┌──────────────▼──────────────┐
+│       Infrastructure        │
+│  PostgreSQL + Logging       │
+└─────────────────────────────┘
 ```
 
-Used to define:
+---
 
-- `EmployeeRequiredMixin`
-- `ManagerRequiredMixin`
-- `AdminRequiredMixin`
-- `ApproverRequiredMixin`
+## 3. Layer Responsibilities
 
-#### ApproverRequiredMixin
+---
 
-Allows access to approval actions for:
+## 3.1 Domain Layer (Core Business Logic)
 
-- Managers
-- Admins
+**Location:** `workflow/models.py` (Document, ApprovalStep)
+**Also:** `workflow/state_machine.py` (if present)
 
-Self-approval is **explicitly forbidden at the view level**, not in the mixin.
+### Responsibilities
 
-### 4.2 Separation of Duties (Defense-in-Depth)
+* Own lifecycle state
+* Enforce valid transitions
+* Enforce permission rules
+* Prevent illegal transitions
+* Guarantee deterministic concurrency behavior
 
-Self-approval prevention is enforced in **two layers**:
+### Core Entity: `Document`
 
-1. **Queryset filtering**  
+#### **States**
 
-```python
-    .exclude(created_by=self.request.user)
+* `DRAFT`
+* `SUBMITTED`
+* `APPROVED`
+* `REJECTED`
+
+### Domain Invariants
+
+| Rule                                         | Enforced Where       |
+| -------------------------------------------- | -------------------- |
+| Only owner may submit draft                  | `Document.submit()`  |
+| Only manager/admin may approve               | `Document.approve()` |
+| Self-approval prohibited                     | `Document.approve()` |
+| Only SUBMITTED can be approved/rejected      | Guard clause         |
+| Only one ApprovalStep per document           | DB UniqueConstraint  |
+| Single audit entry per successful transition | Service boundary     |
+
+### Concurrency Design
+
+The domain guarantees:
+
+* Single winning decision under concurrent approval
+* Idempotent-like behavior under race
+* Atomic decision enforcement
+
+Backed by:
+
+* Database constraints
+* Transaction isolation
+* Guarded state mutation
+* Tests: `test_deterministic_concurrency.py`
+
+This ensures **linearizable approval semantics**.
+
+---
+
+## 3.2 Application Layer (Use Case Orchestration)
+
+### Location
+
+* `workflow/views/`
+* Document methods (`submit`, `approve`, `reject`)
+
+### Responsibility
+
+Translate HTTP actions into domain transitions.
+
+Example:
+
+```text
+POST /documents/<id>/approve/
+        ↓
+DocumentApproveView
+        ↓
+document.approve(actor)
+        ↓
+Domain enforces rules
+        ↓
+AuditLog written
 ```
 
-1. **Transactional check**  
+Application layer must:
 
-```python
-   if document.created_by_id == request.user.id:
-       raise Http404
-```
-
-This ensures:
-
-- UI bypasses are ineffective
-- Concurrent approval attempts are safe
-- Integrity is preserved under race conditions
-
-### 4.3 Authorization & Error Semantics
-
-The system enforces strict separation between:
-
-- **Visibility (404)** – A user must not be able to infer the existence of documents outside their permitted boundary.
-  - Employees may only see their own documents.
-  - Managers and Admins may see all documents.
-  - Unauthorized visibility attempts return 404.
-
-- **Authorization (403)** – If a user can see a document but is not permitted to perform a specific action (e.g., self-approval), the system returns 403.
-
-- **Workflow Invalid State (400)** – If an authorized user attempts a state transition that is not allowed by the pure state machine, the system returns 400.
-
-**Invariant:** View-layer logic must enforce visibility before invoking `DocumentWorkflowService`. The service layer remains the single mutation authority.
-
-### 4.4 Data Integrity Guarantees
-
-Database-level constraints mirror workflow invariants:
-
-- Document status validity (`CHECK` constraint)
-- Single approval decision per document (`UNIQUE` constraint on `ApprovalStep.document`)
-- Approval steps restricted to terminal states (`CHECK` constraint on `status` in `APPROVED`/`REJECTED`)
-
-### 4.5 Concurrency & Idempotency Guarantees
-
-- Workflow transitions are idempotent by design.
-- Replayed transitions are rejected explicitly and produce no side effects.
-- `select_for_update()` within a transaction ensures atomic decisions.
-
-### 4.6 State Machine Guarantees
-
-The state machine exposes a frozen `TransitionResult` contract:
-
-- Pure evaluation only
-- Explicit success/failure separation
-- Stable, user-facing failure reasons
-- No mutation or I/O
-- On success, `reason` is `None`; on failure, `reason` is a stable explanation.
+* Never duplicate business rules
+* Handle exceptions and map to HTTP responses
+* Emit audit logs
+* Remain thin
 
 ---
 
-## 5. Approval Workflow Design
+## 3.3 Presentation Layer
 
-### Unified Approval Queue
+### Components
 
-There is **one approval queue** shared by Managers and Admins.
+* Django CBVs
+* Templates
+* Role-based navigation flags
+* Group-based mixins
 
-- Located at: `/documents/approvals/`
-- Backed by `ApprovalQueueListView`
-- Lists only `SUBMITTED` documents
-- Excludes documents created by the current user
+### Key Files
 
-This avoids:
+* `workflow/views/*`
+* `workflow/mixins.py`
+* `workflow/context_processors.py`
+* `templates/`
 
-- Role fragmentation
-- Approval deadlocks
-- Manager/Admin duplication
+### Functionalities
 
----
+* Authentication
+* Authorization boundary enforcement
+* Rendering
+* HTTP response codes
 
-## 6. Transactional Integrity
+### Authorization Strategy
 
-All approval decisions are wrapped in **database transactions**:
+Two levels:
 
-```python
-with transaction.atomic():
-    Document.objects.select_for_update().get(pk=document_id)
-```
+1. **View-level gatekeeping**
 
-This guarantees:
+   * `ManagerRequiredMixin`
+   * `ApproverRequiredMixin`
+   * `AdminRequiredMixin`
 
-- No double approvals
-- No lost updates
-- Correct audit ordering
+2. **Domain-level enforcement**
 
----
+   * Guards inside `Document.approve()`
+   * Guards inside `Document.submit()`
 
-## 7. Audit Architecture
-
-### Audit Logging Strategy
-
-- All workflow mutations (submit, approve, reject) are logged **exclusively** via `DocumentWorkflowService`.
-- Document creation also logs an audit entry in the view (`DocumentCreateView`).
-- Model signals are **only** used for post-migration group creation; they never enforce permissions or workflow rules.
-
-### Audit Trail Principles
-
-Every significant action produces an immutable audit log entry recording:
-
-- Timestamp
-- Action
-- Actor
-- Target document
-- Optional metadata
-
-### Audit Visibility
-
-| View                         | Access               |
-|------------------------------|----------------------|
-| Per-document audit trail     | Admin only           |
-| System-wide audit log list   | Admin only           |
-
-Audit data is **read-only** and cannot be altered via the UI.
-
-### Audit Presentation
-
-- Audit action labels rendered via `get_action_display` in templates.
-- Templates contain no conditional logic for audit actions.
+This double-layer protection ensures defense-in-depth.
 
 ---
 
-## 8. Template Architecture
+## 3.4 Infrastructure Layer
 
-### Role Awareness
+### Database
 
-Templates do **not** query the database. Instead, role flags are injected via a **single context processor**:
+* PostgreSQL
+* `CONN_MAX_AGE=60`
+* Integrity constraints enforce invariants
 
-```python
-def role_flags(request):
-    # Returns is_employee, is_manager, is_admin
-```
+### Logging
 
-This ensures:
+Structured JSON logging:
 
-- Consistent role logic
-- Zero ORM usage in templates
-- Predictable UI behavior
+* Custom `JsonFormatter`
+* Correlation ID middleware
+* Includes:
 
-### Rich Text Editing
+  * actor
+  * action
+  * document
+  * latency
+  * failure flag
 
-The system uses `django_summernote` for WYSIWYG editing of document content. The `DocumentForm` configures the Summernote widget with a custom toolbar.
+### Middleware
 
----
+`CorrelationIdMiddleware`:
 
-## 9. URL and View Organization
+* Generates request correlation ID
+* Injects into response header
+* Available in structured logs
 
-Views are grouped by responsibility:
+### Signals
 
-| Area                         | Responsibility     |
-|------------------------------|--------------------|
-| `document_list`              | Personal documents |
-| `document_create` / `update` | Authoring          |
-| `document_submit`            | State transition   |
-| `document_decision`          | Approval decisions |
-| `document_review_list`       | Approval queue     |
-| `document_audit`             | Audit visibility   |
+`post_migrate` hook:
 
-URLs are:
+* Creates default groups
 
-- Explicit
-- Namespaced (`workflow` and `reports`)
-- Non-overlapping
-
-### Reports App
-
-The `reports` app contains admin-only audit views:
-
-- `AuditLogListView` – system-wide audit log with filtering
-- `DocumentAuditLogView` – per-document audit trail
+  * Employee
+  * Manager
+  * Admin
 
 ---
 
-## 10. Observability Layer
+## 4. Security Architecture
 
-The system includes a passive observability adapter inside the service layer. This layer:
+### Authentication
 
-- Emits structured logs
-- Emits transition metrics
-- Emits failure diagnostics
-- Does **not** modify workflow behavior
-- Does **not** participate in transactions
-- Must never raise or swallow business exceptions
+Django auth system.
+
+### Authorization Model
+
+| Role      | Capabilities                   |
+| --------- | ------------------------------ |
+| Employee  | Create, edit own draft, submit |
+| Manager   | Approve / reject (not own)     |
+| Admin     | Full workflow access           |
+| Superuser | Global override                |
+
+### Enforcement Points
+
+* View permission mixins
+* Queryset scoping
+* Domain guards
+* 404 on cross-tenant access
+* 403 on illegal state transition
+
+This prevents:
+
+* Horizontal privilege escalation
+* Self-approval
+* Cross-user audit access
+
+---
+
+### 5. Concurrency Model
+
+## Objective
+
+Guarantee deterministic single winner under concurrent decisions.
+
+## Strategy
+
+* Database constraint on ApprovalStep
+* Atomic domain mutation
+* Guarded state checks
+* Race tested with real threads
+* `transaction=True` test markers
+
+## Guarantee
+
+Under concurrent approval:
+
+* Exactly one succeeds
+* One ApprovalStep created
+* One AuditLog created
+* Document state consistent
+
+---
+
+## 6. Observability Architecture
 
 ### Structured Logging
 
-- Logs are formatted as JSON using a custom `JsonFormatter`.
-- A `CorrelationIdMiddleware` injects a correlation ID into each request, which is included in all log records.
-- Logging occurs at transition attempt, success, and controlled failure paths.
+All workflow events are logged as JSON.
 
-### Metrics
+Example fields:
 
-An in-process metrics collector (`WorkflowMetrics`) tracks:
+```json
+{
+  "timestamp": "...",
+  "level": "INFO",
+  "actor": "manager",
+  "document": 12,
+  "action": "APPROVE",
+  "correlation_id": "uuid"
+}
+```
 
-- `workflow.transition.success` (counter)
-- `workflow.transition.failure` (counter)
-- `workflow.transition.latency_ms` (histogram)
+### Correlation Strategy
 
-Metrics are exposed via a staff-only endpoint at `/observability/metrics/` (JSON snapshot).
+* X-Correlation-ID header supported
+* Auto-generated if missing
+* Propagated to response
 
----
+This enables:
 
-## 11. Security Posture Summary
-
-The system enforces security through:
-
-- Explicit permissions (no implicit trust)
-- Defense-in-depth checks
-- Transactional integrity
-- Audit-first design
-- No client-side authority assumptions
-
-This architecture intentionally favors **clarity and correctness over convenience**.
+* Request tracing
+* Cross-service observability (future extensibility)
 
 ---
 
-## 12. Workflow Mutation Authority
+## 7. Testing Architecture
 
-All document lifecycle transitions (submit, approve, reject) are executed **exclusively** via `DocumentWorkflowService`.
+### Categories
 
-Models, views, and signals are prohibited from mutating `Document.status`, creating `ApprovalStep`, or writing workflow-related `AuditLog` entries directly.
+| Type          | Purpose                   |
+| ------------- | ------------------------- |
+| Unit          | Domain invariants         |
+| Integration   | View + domain interaction |
+| Concurrency   | Race correctness          |
+| Permission    | Boundary enforcement      |
+| DB constraint | Integrity validation      |
 
-This guarantees:
+### Guarantees Covered
 
-- Exactly-once audit logging
-- Centralized permission enforcement
-- Transactional integrity
-
----
-
-## 13. Domain Layer
-
-The `WorkflowEngine` is a pure domain component that:
-
-- Accepts `WorkflowCommand`
-- Uses `ExecutionContext`
-- Returns `WorkflowDecision`
-- Has no ORM or infrastructure dependencies
+* No double approval
+* No self approval
+* No duplicate steps
+* Single winner under race
+* No audit on failed transitions
 
 ---
 
-## Database Engine
+## 8. Design Principles
 
-Development and production use PostgreSQL.
-Concurrency safety depends on row-level locking via SELECT ... FOR UPDATE.
-SQLite is no longer supported for concurrency validation.
+### 1. Business Logic Isolation
+
+No workflow rules in templates or raw views.
+
+### 2. Deterministic State Machine
+
+Transitions are explicit and validated.
+
+### 3. Defense in Depth
+
+Authorization enforced at multiple layers.
+
+### 4. Strong Consistency
+
+No eventual consistency; approval is atomic.
+
+### 5. Observability First
+
+Structured logging from the start.
 
 ---
 
-## Execution Engine Contract (Normalized)
+## 9. Current Architectural Strengths
 
-ExecutionEngine exposes a single method:
-    execute(command, handler)
+* Clear separation of concerns
+* Deterministic concurrency handling
+* Role-based enforcement
+* Structured logging
+* Comprehensive test coverage
+* Clean permission boundaries
 
-Responsibilities:
+---
 
-- Open transaction
-- Lock aggregate
-- Load persistence models
-- Invoke domain handler
+## 10. Known Architectural Tradeoffs
 
-Service layer no longer:
+| Decision                        | Tradeoff                    |
+| ------------------------------- | --------------------------- |
+| Business logic in model methods | Tighter ORM coupling        |
+| No service abstraction layer    | Harder to extract API later |
+| Monolithic Django app           | Limited horizontal scaling  |
+| Synchronous processing          | No async event stream       |
 
-- Opens transactions
-- Loads aggregates
-- Controls locking
+These are acceptable for current system scope.
 
-This isolates infrastructure concerns from domain orchestration.
+---
+
+## 11. Summary
+
+This system is architected as:
+
+> A deterministic, state-driven approval engine
+> With strict domain invariants
+> Enforced through layered Clean Architecture
+> Backed by strong database guarantees
+> And structured observability
+
+It is production-ready in design discipline, even if feature scope is still evolving.
 
 ---
