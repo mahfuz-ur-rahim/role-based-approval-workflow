@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from workflow.state_machine import DocumentStatus as DomainStatus
 
 User = get_user_model()
 
@@ -66,3 +67,9 @@ class Document(models.Model):
             "Document.submit() is deprecated. "
             "Use DocumentWorkflowService instead."
         )
+    
+# === Guard: Ensure domain and model status sets are identical ===
+model_status_values = {choice[0] for choice in Document.Status.choices}
+domain_status_values = {member.value for member in DomainStatus}
+assert model_status_values == domain_status_values, \
+    f"Status mismatch: model {model_status_values} vs domain {domain_status_values}"

@@ -141,7 +141,9 @@ class DocumentWorkflowService:
                 raise InvalidTransitionError(decision.reason)
 
             # IDEMPOTENT
-            if decision.next_status.value == document.status:  # type: ignore
+            current_status_enum = DocumentStatus(document.status)
+
+            if decision.next_status == current_status_enum:
                 latency_ms = (time.monotonic() - start_time) * 1000
 
                 WorkflowEventLogger.log_transition_result(
@@ -212,6 +214,11 @@ class DocumentWorkflowService:
         """
 
         if isinstance(effect, UpdateDocumentStatus):
+            if effect.new_status not in dict(document.Status.choices):
+                raise RuntimeError(
+                    f"Domain produced invalid status '{effect.new_status}'. "
+                    f"Allowed: {list(document.Status.values)}"
+                )
             document.status = effect.new_status
             document.save(update_fields=["status", "updated_at"])
 
