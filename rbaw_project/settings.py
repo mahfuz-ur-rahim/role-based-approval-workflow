@@ -81,13 +81,13 @@ WSGI_APPLICATION = "rbaw_project.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "rbaw_dev",
-        "USER": "rbaw_user",
-        "PASSWORD": "strongpassword",
-        "HOST": "localhost",
-        "PORT": "5432",
-        "CONN_MAX_AGE": 60,
+        "ENGINE": config('DB_ENGINE', default='django.db.backends.postgresql'),
+        "NAME": config('DB_NAME'),
+        "USER": config('DB_USER'),
+        "PASSWORD": config('DB_PASSWORD'),
+        "HOST": config('DB_HOST', default='localhost'),
+        "PORT": config('DB_PORT', default='5432'),
+        "CONN_MAX_AGE": config('DB_CONN_MAX_AGE', default=60, cast=int),
     }
 }
 
