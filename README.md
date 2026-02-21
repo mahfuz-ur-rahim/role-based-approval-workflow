@@ -11,21 +11,36 @@ A Django-based document approval system implementing a role-driven state machine
 - Structured JSON logging with request correlation IDs
 - Bootstrap 4 UI and Django admin for operations
 
+## Technology Stack
+
+- Python 3.11+
+- Django 5.2
+- PostgreSQL
+- Bootstrap 4 (frontend)
+- django-summernote (rich text editor)
+- Pytest + pytest-django (testing)
+
 ## Quick Start
 
 1. Clone the repo
 
-   git clone <[repo-url>](https://github.com/mahfuz-ur-rahim/role-based-approval-workflow.git)
+```bash
+   git clone https://github.com/mahfuz-ur-rahim/role-based-approval-workflow.git
    cd role-based-approval-workflow
+```
 
 2. Create & activate a virtual environment
 
+```bash
    python -m venv .venv
    source .venv/bin/activate
+```
 
 3. Install dependencies
 
+```bash
    pip install -r requirements.txt
+```
 
 4. Configure PostgreSQL
 
@@ -77,18 +92,11 @@ Domain-level enforcement is implemented inside the model methods (see [`workflow
 
 Run the test suite with pytest:
 
+```bash
 pytest
+```
 
 Tests include concurrency and permission boundary checks located under `workflow/tests/`.
-
-## Technology Stack
-
-- Python 3.11+
-- Django 5.2
-- PostgreSQL
-- Bootstrap 4 (frontend)
-- django-summernote (rich text editor)
-- Pytest + pytest-django (testing)
 
 ## Important Files / Entry Points
 
