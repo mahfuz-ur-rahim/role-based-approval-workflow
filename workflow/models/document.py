@@ -1,16 +1,12 @@
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth import get_user_model
-from workflow.state_machine import DocumentStatus as DomainStatus
+
+from .audit import AuditLog, AuditAction
 
 User = get_user_model()
 
 
 class Document(models.Model):
-    """
-    Core business document.
-    Owns its lifecycle state and enforces valid transitions.
-    """
-
     class Status(models.TextChoices):
         DRAFT = "DRAFT", "Draft"
         SUBMITTED = "SUBMITTED", "Submitted"
@@ -19,19 +15,16 @@ class Document(models.Model):
 
     title = models.CharField(max_length=255)
     content = models.TextField()
-
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
         default=Status.DRAFT
     )
-
     created_by = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name="documents"
     )
-
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -56,20 +49,65 @@ class Document(models.Model):
     def __str__(self):
         return f"{self.title} [{self.status}]"
 
-    def set_status(self, *args, **kwargs):
-        raise RuntimeError(
-            "Document.set_status() is deprecated. "
-            "Use DocumentWorkflowService instead."
-        )
+    def submit(self, user):
+        """Submit a draft document for approval."""
+        if self.status != self.Status.DRAFT:
+            raise ValueError("Only draft documents can be submitted.")
+        if user != self.created_by:
+            raise PermissionError("Only the owner can submit.")
+        with transaction.atomic():
+            self.status = self.Status.SUBMITTED
+            self.save(update_fields=["status", "updated_at"])
+            AuditLog.log(
+                action=AuditAction.DOCUMENT_SUBMITTED,
+                actor=user,
+                document=self,
+            )
 
-    def submit(self, *args, **kwargs):
-        raise RuntimeError(
-            "Document.submit() is deprecated. "
-            "Use DocumentWorkflowService instead."
-        )
-    
-# === Guard: Ensure domain and model status sets are identical ===
-model_status_values = {choice[0] for choice in Document.Status.choices}
-domain_status_values = {member.value for member in DomainStatus}
-assert model_status_values == domain_status_values, \
-    f"Status mismatch: model {model_status_values} vs domain {domain_status_values}"
+    def approve(self, user):
+        """Approve a submitted document."""
+        from .approval import ApprovalStep
+
+        if self.status != self.Status.SUBMITTED:
+            raise ValueError("Only submitted documents can be approved.")
+        if user == self.created_by:
+            raise PermissionError("Self-approval is not allowed.")
+        if not (user.groups.filter(name__in=["Manager", "Admin"]).exists() or user.is_superuser):
+            raise PermissionError("Only managers or admins can approve.")
+        with transaction.atomic():
+            self.status = self.Status.APPROVED
+            self.save(update_fields=["status", "updated_at"])
+            ApprovalStep.objects.create(
+                document=self,
+                decided_by=user,
+                status=self.Status.APPROVED,
+            )
+            AuditLog.log(
+                action=AuditAction.DOCUMENT_APPROVED,
+                actor=user,
+                document=self,
+            )
+
+    def reject(self, user):
+        """Reject a submitted document."""
+        from .approval import ApprovalStep
+
+        if self.status != self.Status.SUBMITTED:
+            raise ValueError("Only submitted documents can be rejected.")
+        if user == self.created_by:
+            raise PermissionError("Self-rejection is not allowed.")
+        if not (user.groups.filter(name__in=["Manager", "Admin"]).exists() or user.is_superuser):
+            raise PermissionError("Only managers or admins can reject.")
+        with transaction.atomic():
+            self.status = self.Status.REJECTED
+            self.save(update_fields=["status", "updated_at"])
+            ApprovalStep.objects.create(
+                document=self,
+                decided_by=user,
+                status=self.Status.REJECTED,
+            )
+            AuditLog.log(
+                action=AuditAction.DOCUMENT_REJECTED,
+                actor=user,
+                document=self,
+            )

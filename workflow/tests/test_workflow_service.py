@@ -1,24 +1,12 @@
 import pytest
 from django.db import transaction
 
-from workflow.services.document_workflow import (
-    DocumentWorkflowService,
-    InvalidTransitionError,
-    PermissionViolationError,
-)
-from workflow.state_machine import WorkflowAction, TransitionFailure
-from workflow.models import Document, AuditLog, ApprovalStep, AuditAction
+from workflow.models import Document, ApprovalStep, AuditLog, AuditAction
 
 
 @pytest.mark.django_db
 def test_submit_creates_single_audit_log(employee, draft_document):
-    service = DocumentWorkflowService(actor=employee)
-
-    service.perform(
-        document_id=draft_document.id,
-        action=WorkflowAction.SUBMIT,
-    )
-
+    draft_document.submit(employee)
     draft_document.refresh_from_db()
     assert draft_document.status == Document.Status.SUBMITTED
 
@@ -31,19 +19,16 @@ def test_submit_creates_single_audit_log(employee, draft_document):
 
 @pytest.mark.django_db
 def test_double_approval_is_blocked(manager, submitted_document):
-    service = DocumentWorkflowService(actor=manager)
+    # First approval succeeds
+    submitted_document.approve(manager)
+    submitted_document.refresh_from_db()
+    assert submitted_document.status == Document.Status.APPROVED
 
-    service.perform(
-        document_id=submitted_document.id,
-        action=WorkflowAction.APPROVE,
-    )
+    # Second approval should fail
+    with pytest.raises(ValueError, match="Only submitted documents can be approved"):
+        submitted_document.approve(manager)
 
-    with pytest.raises(InvalidTransitionError):
-        service.perform(
-            document_id=submitted_document.id,
-            action=WorkflowAction.APPROVE,
-        )
-
+    # Only one audit log and one approval step should exist
     logs = AuditLog.objects.filter(
         document=submitted_document,
         action=AuditAction.DOCUMENT_APPROVED,
@@ -63,33 +48,25 @@ def test_self_approval_creates_no_audit_or_step(manager):
         status=Document.Status.SUBMITTED,
     )
 
-    service = DocumentWorkflowService(actor=manager)
+    with pytest.raises(PermissionError, match="Self-approval is not allowed"):
+        doc.approve(manager)
 
-    with pytest.raises(PermissionViolationError):
-        service.perform(
-            document_id=doc.id,  # type: ignore
-            action=WorkflowAction.APPROVE,
-        )
-
+    # No audit log or approval step should be created (transaction rolled back)
     assert not AuditLog.objects.filter(document=doc).exists()
     assert not ApprovalStep.objects.filter(document=doc).exists()
 
 
 @pytest.mark.django_db(transaction=True)
 def test_concurrent_like_approval_results_in_single_decision(manager, submitted_document):
-    service = DocumentWorkflowService(actor=manager)
+    # First approve
+    submitted_document.approve(manager)
+    submitted_document.refresh_from_db()
+    assert submitted_document.status == Document.Status.APPROVED
 
-    service.perform(
-        document_id=submitted_document.id,
-        action=WorkflowAction.APPROVE,
-    )
+    # Attempt reject after approval – should fail
+    with pytest.raises(ValueError, match="Only submitted documents can be rejected"):
+        submitted_document.reject(manager)
 
-    # simulate stale second attempt
-    with pytest.raises(InvalidTransitionError):
-        service.perform(
-            document_id=submitted_document.id,
-            action=WorkflowAction.REJECT,
-        )
-
+    # Status remains approved
     submitted_document.refresh_from_db()
     assert submitted_document.status == Document.Status.APPROVED

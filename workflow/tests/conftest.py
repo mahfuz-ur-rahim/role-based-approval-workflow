@@ -1,8 +1,6 @@
 import pytest
 from django.contrib.auth.models import User, Group
 from workflow.models import Document
-from workflow.services.document_workflow import DocumentWorkflowService
-from workflow.state_machine import WorkflowAction
 
 
 @pytest.fixture
@@ -42,11 +40,7 @@ def submitted_document(db, employee):
         content="content",
         created_by=employee,
     )
-    service = DocumentWorkflowService(actor=employee)
-    service.perform(
-        document_id=doc.id,  # type: ignore
-        action=WorkflowAction.SUBMIT,
-    )
+    doc.submit(employee)
     return doc
 
 
