@@ -1,7 +1,6 @@
 import pytest
-from django.db import transaction
 
-from workflow.models import Document, ApprovalStep, AuditLog, AuditAction
+from workflow.models import Document, ApprovalStep
 
 
 @pytest.mark.django_db

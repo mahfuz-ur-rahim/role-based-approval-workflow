@@ -5,4 +5,5 @@ from .login_redirect import RoleBasedLoginView
 from .document_audit import DocumentAuditLogView
 from .document_list import DocumentListView
 from .document_detail import DocumentDetailView
-from .observability_views import workflow_metrics_view
+from .document_submit import DocumentSubmitView
+from .home import home

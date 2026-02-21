@@ -156,12 +156,6 @@ LOGGING = {
         },
     },
     "loggers": {
-        # Observability logs
-        "workflow.observability": {
-            "handlers": ["console_json"],
-            "level": "INFO",
-            "propagate": False,
-        },
         # (Optional) future-proof entire workflow package
         "workflow": {
             "handlers": ["console_json"],
