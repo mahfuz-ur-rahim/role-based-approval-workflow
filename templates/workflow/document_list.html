@@ -32,23 +32,15 @@
             </td>
             <td>{{ doc.created_by.username }}</td>
             <td>
-              {% if doc.status == 'DRAFT' %}
-              <span class="badge badge-secondary"
-                >{{ doc.get_status_display }}</span
-              >
-              {% elif doc.status == 'PENDING' %}
-              <span class="badge badge-warning"
-                >{{ doc.get_status_display }}</span
-              >
-              {% elif doc.status == 'APPROVED' %}
-              <span class="badge badge-success"
-                >{{ doc.get_status_display }}</span
-              >
-              {% elif doc.status == 'REJECTED' %}
-              <span class="badge badge-danger"
-                >{{ doc.get_status_display }}</span
-              >
-              {% endif %}
+                {% if doc.status == 'DRAFT' %}
+                    <span class="badge badge-secondary">{{ doc.get_status_display }}</span>
+                {% elif doc.status == 'SUBMITTED' %}
+                    <span class="badge badge-warning">{{ doc.get_status_display }}</span>
+                {% elif doc.status == 'APPROVED' %}
+                    <span class="badge badge-success">{{ doc.get_status_display }}</span>
+                {% elif doc.status == 'REJECTED' %}
+                    <span class="badge badge-danger">{{ doc.get_status_display }}</span>
+                {% endif %}
             </td>
             <td>{{ doc.created_at }}</td>
             <td>

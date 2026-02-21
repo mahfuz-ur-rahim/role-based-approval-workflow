@@ -20,7 +20,4 @@ class DocumentListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["is_admin"] = (
-            self.request.user.groups.filter(name="Admin").exists()
-        )
         return context

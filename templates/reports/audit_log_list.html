@@ -55,18 +55,16 @@
                     <tr>
                         <td>{{ log.created_at }}</td>
                         <td>
-                            {% if log.action == 'CREATED' %}
+                            {% if log.action == 'DOCUMENT_CREATED' %}
                                 <span class="badge badge-primary">Created</span>
-                            {% elif log.action == 'SUBMITTED' %}
+                            {% elif log.action == 'DOCUMENT_SUBMITTED' %}
                                 <span class="badge badge-warning">Submitted</span>
-                            {% elif log.action == 'APPROVED' %}
+                            {% elif log.action == 'DOCUMENT_APPROVED' %}
                                 <span class="badge badge-success">Approved</span>
-                            {% elif log.action == 'REJECTED' %}
+                            {% elif log.action == 'DOCUMENT_REJECTED' %}
                                 <span class="badge badge-danger">Rejected</span>
                             {% else %}
-                                <span class="badge badge-secondary">
-                                    {{ log.get_action_display }}
-                                </span>
+                                <span class="badge badge-secondary">{{ log.get_action_display }}</span>
                             {% endif %}
                         </td>
                         <td>{{ log.actor }}</td>
