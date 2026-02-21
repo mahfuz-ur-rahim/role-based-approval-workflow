@@ -1,4 +1,5 @@
 from django.urls import path
+from workflow.views.dashboard import DashboardView
 from workflow.views.document_detail import DocumentDetailView
 from workflow.views.home import home
 from workflow.views.document_list import DocumentListView
@@ -17,6 +18,11 @@ urlpatterns = [
         "",
         home,
         name="home"
+    ),
+    path(
+        "dashboard/",
+        DashboardView.as_view(),
+        name="dashboard",
     ),
     path(
         "documents/",

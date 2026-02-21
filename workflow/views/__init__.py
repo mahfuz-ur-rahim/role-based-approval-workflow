@@ -7,3 +7,4 @@ from .document_list import DocumentListView
 from .document_detail import DocumentDetailView
 from .document_submit import DocumentSubmitView
 from .home import home
+from .dashboard import DashboardView

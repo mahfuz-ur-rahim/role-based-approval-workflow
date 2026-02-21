@@ -55,6 +55,13 @@
                 <ul class="navbar-nav mr-auto">
                     {% if user.is_authenticated %}
                         {% if user.is_superuser %}
+                            {% if is_manager or is_admin %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'workflow:dashboard' %}">
+                                    <i class="fas fa-tachometer-alt mr-1"></i>Dashboard
+                                </a>
+                            </li>
+                            {% endif %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'reports:audit-log-list' %}">
                                 <i class="fas fa-history mr-1"></i>Audit Logs
