@@ -65,12 +65,12 @@ The core design principle:
 
 ---
 
-## 3.1 Domain Layer (Core Business Logic)
+### 3.1 Domain Layer (Core Business Logic)
 
 **Location:** `workflow/models.py` (Document, ApprovalStep)
 **Also:** `workflow/state_machine.py` (if present)
 
-### Responsibilities
+#### Responsibilities
 
 * Own lifecycle state
 * Enforce valid transitions
@@ -78,16 +78,16 @@ The core design principle:
 * Prevent illegal transitions
 * Guarantee deterministic concurrency behavior
 
-### Core Entity: `Document`
+#### Core Entity: `Document`
 
-#### **States**
+##### **States**
 
 * `DRAFT`
 * `SUBMITTED`
 * `APPROVED`
 * `REJECTED`
 
-### Domain Invariants
+#### Domain Invariants
 
 | Rule                                         | Enforced Where       |
 | -------------------------------------------- | -------------------- |
@@ -98,7 +98,7 @@ The core design principle:
 | Only one ApprovalStep per document           | DB UniqueConstraint  |
 | Single audit entry per successful transition | Service boundary     |
 
-### Concurrency Design
+#### Concurrency Design
 
 The domain guarantees:
 
@@ -117,14 +117,14 @@ This ensures **linearizable approval semantics**.
 
 ---
 
-## 3.2 Application Layer (Use Case Orchestration)
+### 3.2 Application Layer (Use Case Orchestration)
 
-### Location
+#### Location
 
 * `workflow/views/`
 * Document methods (`submit`, `approve`, `reject`)
 
-### Responsibility
+#### Responsibility
 
 Translate HTTP actions into domain transitions.
 
@@ -151,30 +151,32 @@ Application layer must:
 
 ---
 
-## 3.3 Presentation Layer
+### 3.3 Presentation Layer
 
-### Components
+* Login endpoint `/accounts/login/` uses [`workflow.views.login_redirect.RoleBasedLoginView`](workflow/views/login_redirect.py) which redirects Manager/Admin users to the manager approval queue (`workflow:manager-document-list`) and others to `workflow:document-list`.
+
+#### Components
 
 * Django CBVs
 * Templates
 * Role-based navigation flags
 * Group-based mixins
 
-### Key Files
+#### Key Files
 
 * `workflow/views/*`
 * `workflow/mixins.py`
 * `workflow/context_processors.py`
 * `templates/`
 
-### Functionalities
+#### Functionalities
 
 * Authentication
 * Authorization boundary enforcement
 * Rendering
 * HTTP response codes
 
-### Authorization Strategy
+#### Authorization Strategy
 
 Two levels:
 
@@ -193,15 +195,20 @@ This double-layer protection ensures defense-in-depth.
 
 ---
 
-## 3.4 Infrastructure Layer
+### 3.4 Infrastructure Layer
 
-### Database
+* Request correlation: `X-Correlation-ID` header injected and propagated by [`workflow.middleware.CorrelationIdMiddleware`](workflow/middleware.py).
+* Structured JSON logging formatted by [`workflow.logging.JsonFormatter`](workflow/logging.py).
+* Default user groups (`Employee`, `Manager`, `Admin`) are created at post-migrate via [`workflow.signals.create_default_groups`](workflow/signals.py). Tests depend on these groups existing after running migrations.
+* Time zone is set in [rbaw_project/settings.py](rbaw_project/settings.py) (`TIME_ZONE = "Asia/Dhaka"`).
+
+#### Database
 
 * PostgreSQL
 * `CONN_MAX_AGE=60`
 * Integrity constraints enforce invariants
 
-### Logging
+#### Logging
 
 Structured JSON logging:
 
@@ -215,7 +222,7 @@ Structured JSON logging:
   * latency
   * failure flag
 
-### Middleware
+#### Middleware
 
 `CorrelationIdMiddleware`:
 
@@ -223,7 +230,7 @@ Structured JSON logging:
 * Injects into response header
 * Available in structured logs
 
-### Signals
+#### Signals
 
 `post_migrate` hook:
 
@@ -266,13 +273,13 @@ This prevents:
 
 ---
 
-### 5. Concurrency Model
+## 5. Concurrency Model
 
-## Objective
+### Objective
 
 Guarantee deterministic single winner under concurrent decisions.
 
-## Strategy
+### Strategy
 
 * Database constraint on ApprovalStep
 * Atomic domain mutation
@@ -280,7 +287,7 @@ Guarantee deterministic single winner under concurrent decisions.
 * Race tested with real threads
 * `transaction=True` test markers
 
-## Guarantee
+### Guarantee
 
 Under concurrent approval:
 

@@ -22,36 +22,36 @@ A Django-based document approval system implementing a role-driven state machine
 
 ## Quick Start
 
-1. Clone the repo
+### 1. Clone the repo
 
 ```bash
    git clone https://github.com/mahfuz-ur-rahim/role-based-approval-workflow.git
    cd role-based-approval-workflow
 ```
 
-2. Create & activate a virtual environment
+### 2. Create & activate a virtual environment
 
 ```bash
    python -m venv .venv
    source .venv/bin/activate
 ```
 
-3. Install dependencies
+### 3. Install dependencies
 
 ```bash
    pip install -r requirements.txt
 ```
 
-4. Configure PostgreSQL
+### 4. Configure PostgreSQL
 
-   - Create database and user matching `rbaw_project/settings.py` or update settings:
-     - NAME: `rbaw_dev`
-     - USER: `rbaw_user`
-     - PASSWORD: `strongpassword`
-     - HOST: `localhost`
-     - PORT: `5432`
+- Create database and user matching `rbaw_project/settings.py` or update settings:
+  - NAME: `rbaw_dev`
+  - USER: `rbaw_user`
+  - PASSWORD: `strongpassword`
+  - HOST: `localhost`
+  - PORT: `5432`
 
-5. Run migrations
+### 5. Run migrations
 
 ```bash
    python manage.py migrate
@@ -59,19 +59,19 @@ A Django-based document approval system implementing a role-driven state machine
 
    The app registers a post-migrate signal to create default groups (`Employee`, `Manager`, `Admin`) automatically (see [`workflow.signals.create_default_groups`](workflow/signals.py)).
 
-6. Create a superuser
+### 6. Create a superuser
 
 ```bash
    python manage.py createsuperuser
 ```
 
-7. Run the development server
+### 7. Run the development server
 
 ```bash
    python manage.py runserver
 ```
 
-8. Visit:
+### 8. Visit
 
    <http://127.0.0.1:8000/> — main app
    <http://127.0.0.1:8000/admin/> — Django admin
